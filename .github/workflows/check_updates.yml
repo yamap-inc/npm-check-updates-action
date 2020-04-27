@@ -8,7 +8,10 @@ on:
 jobs:
   execute-action:
     runs-on: ubuntu-latest
+
     steps:
+    - uses: actions/checkout@v2
+
     - name: check updates
       id: check_updates
       uses: ./
