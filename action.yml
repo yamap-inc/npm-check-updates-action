@@ -1,9 +1,13 @@
 name: ncu action
 description: npm package update action using ncu
-inputs:
-  my_input:
-    description: example input
-    required: false
+author: SotaSuzuki
+outputs:
+  has_update:
+    description: whether update available or not
+  formatted_as_json:
+    description: new version information formatted as json
+  formatted_as_columns:
+    description: new version information formatted as columns for markdown table
 runs:
   using: node12
   main: dist/index.js

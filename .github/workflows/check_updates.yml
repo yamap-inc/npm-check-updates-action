@@ -1,0 +1,18 @@
+name: check updates
+on:
+  push:
+    branches:
+      - master
+      - development
+      - feature/*
+jobs:
+  execute-action:
+    runs-on: ubuntu-latest
+    steps:
+    - name: check updates
+      id: check_updates
+      uses: ./
+    - run: echo "${{ steps.check_updates.outputs.has_update }}"
+    - run: echo "${{ steps.check_updates.outputs.formatted_as_json }}"
+    - run: echo "${{ steps.check_updates.outputs.formatted_as_columns }}"
+
