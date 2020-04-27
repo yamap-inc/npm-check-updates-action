@@ -1,0 +1,30 @@
+[
+  {
+      "name": "@zeit/ncc",
+      "current": "0.20.5",
+      "wanted": "0.20.5",
+      "latest": "0.22.1",
+      "homepage": "https://github.com/zeit/ncc#readme"
+  },
+  {
+      "name": "eslint-config-prettier",
+      "current": "6.10.1",
+      "wanted": "6.11.0",
+      "latest": "6.11.0",
+      "homepage": "https://github.com/prettier/eslint-config-prettier#readme"
+  },
+  {
+      "name": "jest",
+      "current": "24.9.0",
+      "wanted": "24.9.0",
+      "latest": "25.4.0",
+      "homepage": "https://jestjs.io/"
+  },
+  {
+      "name": "prettier",
+      "current": "2.0.4",
+      "wanted": "2.0.5",
+      "latest": "2.0.5",
+      "homepage": "https://prettier.io"
+  }
+]
