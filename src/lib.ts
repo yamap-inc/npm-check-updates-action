@@ -73,11 +73,11 @@ export const formatAsColumns = async (packages: Package[]) => {
     return '';
   }
 
-  const keys = Object.keys(packages[0]).filter((key) => key !== 'homepage');
+  const keys = Object.keys(packages[0]).filter((key) => key !== 'url');
 
   const headerRow = `| ${keys.join('|')} |`;
   const alignRow = `| ${keys.map(() => ':--').join('|')} |`;
   const itemRows = packages.map((pkg) => getItemRow(pkg));
 
-  return [headerRow, headerRow, alignRow, ...itemRows].join(os.EOL);
+  return [headerRow, alignRow, ...itemRows].join(os.EOL);
 };

@@ -27,10 +27,13 @@
     "url": "https://github.com/SotaSuzuki/ncu-action/issues"
   },
   "homepage": "https://github.com/SotaSuzuki/ncu-action#readme",
-  "devDependencies": {
+  "dependencies": {
     "@actions/core": "^1.2.3",
     "@actions/exec": "^1.0.3",
     "@actions/io": "^1.0.2",
+    "npm-check-updates": "^4.1.2"
+  },
+  "devDependencies": {
     "@types/jest": "^25.2.1",
     "@types/node": "^13.13.4",
     "@typescript-eslint/eslint-plugin": "^2.29.0",
