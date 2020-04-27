@@ -64,21 +64,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const core_1 = __importDefault(__webpack_require__(470));
-const run = () => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        core_1.default.setOutput('has_update', 'yes');
-        core_1.default.setOutput('formatted_as_json', '[]');
-        core_1.default.setOutput('formatted_as_columns', '|--|');
-    }
-    catch (err) {
-        core_1.default.setFailed(err.message);
-    }
-});
+const core = __importStar(__webpack_require__(470));
+function run() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            core.setOutput('has_update', 'yes');
+            core.setOutput('formatted_as_json', '[]');
+            core.setOutput('formatted_as_columns', '|--|');
+        }
+        catch (err) {
+            core.setFailed(err.message);
+        }
+    });
+}
 run();
 exports.default = run;
 

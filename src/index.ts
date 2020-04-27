@@ -1,6 +1,6 @@
-import core from '@actions/core';
+import * as core from '@actions/core';
 
-const run = async () => {
+async function run() {
   try {
     core.setOutput('has_update', 'yes');
     core.setOutput('formatted_as_json', '[]');
@@ -8,7 +8,7 @@ const run = async () => {
   } catch (err) {
     core.setFailed(err.message);
   }
-};
+}
 
 run();
 
