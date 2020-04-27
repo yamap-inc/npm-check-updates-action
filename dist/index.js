@@ -79,6 +79,7 @@ const run = () => __awaiter(void 0, void 0, void 0, function* () {
         core_1.default.setFailed(err.message);
     }
 });
+run();
 exports.default = run;
 
 
