@@ -15,7 +15,8 @@ jobs:
     - name: check updates
       id: check_updates
       uses: ./
-    - run: echo "${{ steps.check_updates.outputs.has_update }}"
-    - run: echo "${{ steps.check_updates.outputs.formatted_as_json }}"
-    - run: echo "${{ steps.check_updates.outputs.formatted_as_columns }}"
+
+    - run: echo ${{ steps.check_updates.outputs.has_update }}
+    - run: echo ${{ steps.check_updates.outputs.formatted_as_json }}
+    - run: echo ${{ steps.check_updates.outputs.formatted_as_columns }}
 
