@@ -530,49 +530,596 @@ module.exports = gtr
 /* 7 */,
 /* 8 */,
 /* 9 */
-/***/ (function(module, __unusedexports, __webpack_require__) {
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
 
-
-
-var loader = __webpack_require__(337);
-var dumper = __webpack_require__(685);
-
-
-function deprecated(name) {
-  return function () {
-    throw new Error('Function ' + name + ' is deprecated and cannot be used.');
-  };
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const os = __webpack_require__(87);
+const events = __webpack_require__(614);
+const child = __webpack_require__(129);
+const path = __webpack_require__(622);
+const io = __webpack_require__(1);
+const ioUtil = __webpack_require__(672);
+/* eslint-disable @typescript-eslint/unbound-method */
+const IS_WINDOWS = process.platform === 'win32';
+/*
+ * Class for running command line tools. Handles quoting and arg parsing in a platform agnostic way.
+ */
+class ToolRunner extends events.EventEmitter {
+    constructor(toolPath, args, options) {
+        super();
+        if (!toolPath) {
+            throw new Error("Parameter 'toolPath' cannot be null or empty.");
+        }
+        this.toolPath = toolPath;
+        this.args = args || [];
+        this.options = options || {};
+    }
+    _debug(message) {
+        if (this.options.listeners && this.options.listeners.debug) {
+            this.options.listeners.debug(message);
+        }
+    }
+    _getCommandString(options, noPrefix) {
+        const toolPath = this._getSpawnFileName();
+        const args = this._getSpawnArgs(options);
+        let cmd = noPrefix ? '' : '[command]'; // omit prefix when piped to a second tool
+        if (IS_WINDOWS) {
+            // Windows + cmd file
+            if (this._isCmdFile()) {
+                cmd += toolPath;
+                for (const a of args) {
+                    cmd += ` ${a}`;
+                }
+            }
+            // Windows + verbatim
+            else if (options.windowsVerbatimArguments) {
+                cmd += `"${toolPath}"`;
+                for (const a of args) {
+                    cmd += ` ${a}`;
+                }
+            }
+            // Windows (regular)
+            else {
+                cmd += this._windowsQuoteCmdArg(toolPath);
+                for (const a of args) {
+                    cmd += ` ${this._windowsQuoteCmdArg(a)}`;
+                }
+            }
+        }
+        else {
+            // OSX/Linux - this can likely be improved with some form of quoting.
+            // creating processes on Unix is fundamentally different than Windows.
+            // on Unix, execvp() takes an arg array.
+            cmd += toolPath;
+            for (const a of args) {
+                cmd += ` ${a}`;
+            }
+        }
+        return cmd;
+    }
+    _processLineBuffer(data, strBuffer, onLine) {
+        try {
+            let s = strBuffer + data.toString();
+            let n = s.indexOf(os.EOL);
+            while (n > -1) {
+                const line = s.substring(0, n);
+                onLine(line);
+                // the rest of the string ...
+                s = s.substring(n + os.EOL.length);
+                n = s.indexOf(os.EOL);
+            }
+            strBuffer = s;
+        }
+        catch (err) {
+            // streaming lines to console is best effort.  Don't fail a build.
+            this._debug(`error processing line. Failed with error ${err}`);
+        }
+    }
+    _getSpawnFileName() {
+        if (IS_WINDOWS) {
+            if (this._isCmdFile()) {
+                return process.env['COMSPEC'] || 'cmd.exe';
+            }
+        }
+        return this.toolPath;
+    }
+    _getSpawnArgs(options) {
+        if (IS_WINDOWS) {
+            if (this._isCmdFile()) {
+                let argline = `/D /S /C "${this._windowsQuoteCmdArg(this.toolPath)}`;
+                for (const a of this.args) {
+                    argline += ' ';
+                    argline += options.windowsVerbatimArguments
+                        ? a
+                        : this._windowsQuoteCmdArg(a);
+                }
+                argline += '"';
+                return [argline];
+            }
+        }
+        return this.args;
+    }
+    _endsWith(str, end) {
+        return str.endsWith(end);
+    }
+    _isCmdFile() {
+        const upperToolPath = this.toolPath.toUpperCase();
+        return (this._endsWith(upperToolPath, '.CMD') ||
+            this._endsWith(upperToolPath, '.BAT'));
+    }
+    _windowsQuoteCmdArg(arg) {
+        // for .exe, apply the normal quoting rules that libuv applies
+        if (!this._isCmdFile()) {
+            return this._uvQuoteCmdArg(arg);
+        }
+        // otherwise apply quoting rules specific to the cmd.exe command line parser.
+        // the libuv rules are generic and are not designed specifically for cmd.exe
+        // command line parser.
+        //
+        // for a detailed description of the cmd.exe command line parser, refer to
+        // http://stackoverflow.com/questions/4094699/how-does-the-windows-command-interpreter-cmd-exe-parse-scripts/7970912#7970912
+        // need quotes for empty arg
+        if (!arg) {
+            return '""';
+        }
+        // determine whether the arg needs to be quoted
+        const cmdSpecialChars = [
+            ' ',
+            '\t',
+            '&',
+            '(',
+            ')',
+            '[',
+            ']',
+            '{',
+            '}',
+            '^',
+            '=',
+            ';',
+            '!',
+            "'",
+            '+',
+            ',',
+            '`',
+            '~',
+            '|',
+            '<',
+            '>',
+            '"'
+        ];
+        let needsQuotes = false;
+        for (const char of arg) {
+            if (cmdSpecialChars.some(x => x === char)) {
+                needsQuotes = true;
+                break;
+            }
+        }
+        // short-circuit if quotes not needed
+        if (!needsQuotes) {
+            return arg;
+        }
+        // the following quoting rules are very similar to the rules that by libuv applies.
+        //
+        // 1) wrap the string in quotes
+        //
+        // 2) double-up quotes - i.e. " => ""
+        //
+        //    this is different from the libuv quoting rules. libuv replaces " with \", which unfortunately
+        //    doesn't work well with a cmd.exe command line.
+        //
+        //    note, replacing " with "" also works well if the arg is passed to a downstream .NET console app.
+        //    for example, the command line:
+        //          foo.exe "myarg:""my val"""
+        //    is parsed by a .NET console app into an arg array:
+        //          [ "myarg:\"my val\"" ]
+        //    which is the same end result when applying libuv quoting rules. although the actual
+        //    command line from libuv quoting rules would look like:
+        //          foo.exe "myarg:\"my val\""
+        //
+        // 3) double-up slashes that precede a quote,
+        //    e.g.  hello \world    => "hello \world"
+        //          hello\"world    => "hello\\""world"
+        //          hello\\"world   => "hello\\\\""world"
+        //          hello world\    => "hello world\\"
+        //
+        //    technically this is not required for a cmd.exe command line, or the batch argument parser.
+        //    the reasons for including this as a .cmd quoting rule are:
+        //
+        //    a) this is optimized for the scenario where the argument is passed from the .cmd file to an
+        //       external program. many programs (e.g. .NET console apps) rely on the slash-doubling rule.
+        //
+        //    b) it's what we've been doing previously (by deferring to node default behavior) and we
+        //       haven't heard any complaints about that aspect.
+        //
+        // note, a weakness of the quoting rules chosen here, is that % is not escaped. in fact, % cannot be
+        // escaped when used on the command line directly - even though within a .cmd file % can be escaped
+        // by using %%.
+        //
+        // the saving grace is, on the command line, %var% is left as-is if var is not defined. this contrasts
+        // the line parsing rules within a .cmd file, where if var is not defined it is replaced with nothing.
+        //
+        // one option that was explored was replacing % with ^% - i.e. %var% => ^%var^%. this hack would
+        // often work, since it is unlikely that var^ would exist, and the ^ character is removed when the
+        // variable is used. the problem, however, is that ^ is not removed when %* is used to pass the args
+        // to an external program.
+        //
+        // an unexplored potential solution for the % escaping problem, is to create a wrapper .cmd file.
+        // % can be escaped within a .cmd file.
+        let reverse = '"';
+        let quoteHit = true;
+        for (let i = arg.length; i > 0; i--) {
+            // walk the string in reverse
+            reverse += arg[i - 1];
+            if (quoteHit && arg[i - 1] === '\\') {
+                reverse += '\\'; // double the slash
+            }
+            else if (arg[i - 1] === '"') {
+                quoteHit = true;
+                reverse += '"'; // double the quote
+            }
+            else {
+                quoteHit = false;
+            }
+        }
+        reverse += '"';
+        return reverse
+            .split('')
+            .reverse()
+            .join('');
+    }
+    _uvQuoteCmdArg(arg) {
+        // Tool runner wraps child_process.spawn() and needs to apply the same quoting as
+        // Node in certain cases where the undocumented spawn option windowsVerbatimArguments
+        // is used.
+        //
+        // Since this function is a port of quote_cmd_arg from Node 4.x (technically, lib UV,
+        // see https://github.com/nodejs/node/blob/v4.x/deps/uv/src/win/process.c for details),
+        // pasting copyright notice from Node within this function:
+        //
+        //      Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+        //
+        //      Permission is hereby granted, free of charge, to any person obtaining a copy
+        //      of this software and associated documentation files (the "Software"), to
+        //      deal in the Software without restriction, including without limitation the
+        //      rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+        //      sell copies of the Software, and to permit persons to whom the Software is
+        //      furnished to do so, subject to the following conditions:
+        //
+        //      The above copyright notice and this permission notice shall be included in
+        //      all copies or substantial portions of the Software.
+        //
+        //      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+        //      IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+        //      FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+        //      AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+        //      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+        //      FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+        //      IN THE SOFTWARE.
+        if (!arg) {
+            // Need double quotation for empty argument
+            return '""';
+        }
+        if (!arg.includes(' ') && !arg.includes('\t') && !arg.includes('"')) {
+            // No quotation needed
+            return arg;
+        }
+        if (!arg.includes('"') && !arg.includes('\\')) {
+            // No embedded double quotes or backslashes, so I can just wrap
+            // quote marks around the whole thing.
+            return `"${arg}"`;
+        }
+        // Expected input/output:
+        //   input : hello"world
+        //   output: "hello\"world"
+        //   input : hello""world
+        //   output: "hello\"\"world"
+        //   input : hello\world
+        //   output: hello\world
+        //   input : hello\\world
+        //   output: hello\\world
+        //   input : hello\"world
+        //   output: "hello\\\"world"
+        //   input : hello\\"world
+        //   output: "hello\\\\\"world"
+        //   input : hello world\
+        //   output: "hello world\\" - note the comment in libuv actually reads "hello world\"
+        //                             but it appears the comment is wrong, it should be "hello world\\"
+        let reverse = '"';
+        let quoteHit = true;
+        for (let i = arg.length; i > 0; i--) {
+            // walk the string in reverse
+            reverse += arg[i - 1];
+            if (quoteHit && arg[i - 1] === '\\') {
+                reverse += '\\';
+            }
+            else if (arg[i - 1] === '"') {
+                quoteHit = true;
+                reverse += '\\';
+            }
+            else {
+                quoteHit = false;
+            }
+        }
+        reverse += '"';
+        return reverse
+            .split('')
+            .reverse()
+            .join('');
+    }
+    _cloneExecOptions(options) {
+        options = options || {};
+        const result = {
+            cwd: options.cwd || process.cwd(),
+            env: options.env || process.env,
+            silent: options.silent || false,
+            windowsVerbatimArguments: options.windowsVerbatimArguments || false,
+            failOnStdErr: options.failOnStdErr || false,
+            ignoreReturnCode: options.ignoreReturnCode || false,
+            delay: options.delay || 10000
+        };
+        result.outStream = options.outStream || process.stdout;
+        result.errStream = options.errStream || process.stderr;
+        return result;
+    }
+    _getSpawnOptions(options, toolPath) {
+        options = options || {};
+        const result = {};
+        result.cwd = options.cwd;
+        result.env = options.env;
+        result['windowsVerbatimArguments'] =
+            options.windowsVerbatimArguments || this._isCmdFile();
+        if (options.windowsVerbatimArguments) {
+            result.argv0 = `"${toolPath}"`;
+        }
+        return result;
+    }
+    /**
+     * Exec a tool.
+     * Output will be streamed to the live console.
+     * Returns promise with return code
+     *
+     * @param     tool     path to tool to exec
+     * @param     options  optional exec options.  See ExecOptions
+     * @returns   number
+     */
+    exec() {
+        return __awaiter(this, void 0, void 0, function* () {
+            // root the tool path if it is unrooted and contains relative pathing
+            if (!ioUtil.isRooted(this.toolPath) &&
+                (this.toolPath.includes('/') ||
+                    (IS_WINDOWS && this.toolPath.includes('\\')))) {
+                // prefer options.cwd if it is specified, however options.cwd may also need to be rooted
+                this.toolPath = path.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
+            }
+            // if the tool is only a file name, then resolve it from the PATH
+            // otherwise verify it exists (add extension on Windows if necessary)
+            this.toolPath = yield io.which(this.toolPath, true);
+            return new Promise((resolve, reject) => {
+                this._debug(`exec tool: ${this.toolPath}`);
+                this._debug('arguments:');
+                for (const arg of this.args) {
+                    this._debug(`   ${arg}`);
+                }
+                const optionsNonNull = this._cloneExecOptions(this.options);
+                if (!optionsNonNull.silent && optionsNonNull.outStream) {
+                    optionsNonNull.outStream.write(this._getCommandString(optionsNonNull) + os.EOL);
+                }
+                const state = new ExecState(optionsNonNull, this.toolPath);
+                state.on('debug', (message) => {
+                    this._debug(message);
+                });
+                const fileName = this._getSpawnFileName();
+                const cp = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
+                const stdbuffer = '';
+                if (cp.stdout) {
+                    cp.stdout.on('data', (data) => {
+                        if (this.options.listeners && this.options.listeners.stdout) {
+                            this.options.listeners.stdout(data);
+                        }
+                        if (!optionsNonNull.silent && optionsNonNull.outStream) {
+                            optionsNonNull.outStream.write(data);
+                        }
+                        this._processLineBuffer(data, stdbuffer, (line) => {
+                            if (this.options.listeners && this.options.listeners.stdline) {
+                                this.options.listeners.stdline(line);
+                            }
+                        });
+                    });
+                }
+                const errbuffer = '';
+                if (cp.stderr) {
+                    cp.stderr.on('data', (data) => {
+                        state.processStderr = true;
+                        if (this.options.listeners && this.options.listeners.stderr) {
+                            this.options.listeners.stderr(data);
+                        }
+                        if (!optionsNonNull.silent &&
+                            optionsNonNull.errStream &&
+                            optionsNonNull.outStream) {
+                            const s = optionsNonNull.failOnStdErr
+                                ? optionsNonNull.errStream
+                                : optionsNonNull.outStream;
+                            s.write(data);
+                        }
+                        this._processLineBuffer(data, errbuffer, (line) => {
+                            if (this.options.listeners && this.options.listeners.errline) {
+                                this.options.listeners.errline(line);
+                            }
+                        });
+                    });
+                }
+                cp.on('error', (err) => {
+                    state.processError = err.message;
+                    state.processExited = true;
+                    state.processClosed = true;
+                    state.CheckComplete();
+                });
+                cp.on('exit', (code) => {
+                    state.processExitCode = code;
+                    state.processExited = true;
+                    this._debug(`Exit code ${code} received from tool '${this.toolPath}'`);
+                    state.CheckComplete();
+                });
+                cp.on('close', (code) => {
+                    state.processExitCode = code;
+                    state.processExited = true;
+                    state.processClosed = true;
+                    this._debug(`STDIO streams have closed for tool '${this.toolPath}'`);
+                    state.CheckComplete();
+                });
+                state.on('done', (error, exitCode) => {
+                    if (stdbuffer.length > 0) {
+                        this.emit('stdline', stdbuffer);
+                    }
+                    if (errbuffer.length > 0) {
+                        this.emit('errline', errbuffer);
+                    }
+                    cp.removeAllListeners();
+                    if (error) {
+                        reject(error);
+                    }
+                    else {
+                        resolve(exitCode);
+                    }
+                });
+            });
+        });
+    }
 }
-
-
-module.exports.Type                = __webpack_require__(945);
-module.exports.Schema              = __webpack_require__(43);
-module.exports.FAILSAFE_SCHEMA     = __webpack_require__(581);
-module.exports.JSON_SCHEMA         = __webpack_require__(23);
-module.exports.CORE_SCHEMA         = __webpack_require__(611);
-module.exports.DEFAULT_SAFE_SCHEMA = __webpack_require__(723);
-module.exports.DEFAULT_FULL_SCHEMA = __webpack_require__(910);
-module.exports.load                = loader.load;
-module.exports.loadAll             = loader.loadAll;
-module.exports.safeLoad            = loader.safeLoad;
-module.exports.safeLoadAll         = loader.safeLoadAll;
-module.exports.dump                = dumper.dump;
-module.exports.safeDump            = dumper.safeDump;
-module.exports.YAMLException       = __webpack_require__(556);
-
-// Deprecated schema names from JS-YAML 2.0.x
-module.exports.MINIMAL_SCHEMA = __webpack_require__(581);
-module.exports.SAFE_SCHEMA    = __webpack_require__(723);
-module.exports.DEFAULT_SCHEMA = __webpack_require__(910);
-
-// Deprecated functions from JS-YAML 1.x.x
-module.exports.scan           = deprecated('scan');
-module.exports.parse          = deprecated('parse');
-module.exports.compose        = deprecated('compose');
-module.exports.addConstructor = deprecated('addConstructor');
-
+exports.ToolRunner = ToolRunner;
+/**
+ * Convert an arg string to an array of args. Handles escaping
+ *
+ * @param    argString   string of arguments
+ * @returns  string[]    array of arguments
+ */
+function argStringToArray(argString) {
+    const args = [];
+    let inQuotes = false;
+    let escaped = false;
+    let arg = '';
+    function append(c) {
+        // we only escape double quotes.
+        if (escaped && c !== '"') {
+            arg += '\\';
+        }
+        arg += c;
+        escaped = false;
+    }
+    for (let i = 0; i < argString.length; i++) {
+        const c = argString.charAt(i);
+        if (c === '"') {
+            if (!escaped) {
+                inQuotes = !inQuotes;
+            }
+            else {
+                append(c);
+            }
+            continue;
+        }
+        if (c === '\\' && escaped) {
+            append(c);
+            continue;
+        }
+        if (c === '\\' && inQuotes) {
+            escaped = true;
+            continue;
+        }
+        if (c === ' ' && !inQuotes) {
+            if (arg.length > 0) {
+                args.push(arg);
+                arg = '';
+            }
+            continue;
+        }
+        append(c);
+    }
+    if (arg.length > 0) {
+        args.push(arg.trim());
+    }
+    return args;
+}
+exports.argStringToArray = argStringToArray;
+class ExecState extends events.EventEmitter {
+    constructor(options, toolPath) {
+        super();
+        this.processClosed = false; // tracks whether the process has exited and stdio is closed
+        this.processError = '';
+        this.processExitCode = 0;
+        this.processExited = false; // tracks whether the process has exited
+        this.processStderr = false; // tracks whether stderr was written to
+        this.delay = 10000; // 10 seconds
+        this.done = false;
+        this.timeout = null;
+        if (!toolPath) {
+            throw new Error('toolPath must not be empty');
+        }
+        this.options = options;
+        this.toolPath = toolPath;
+        if (options.delay) {
+            this.delay = options.delay;
+        }
+    }
+    CheckComplete() {
+        if (this.done) {
+            return;
+        }
+        if (this.processClosed) {
+            this._setResult();
+        }
+        else if (this.processExited) {
+            this.timeout = setTimeout(ExecState.HandleTimeout, this.delay, this);
+        }
+    }
+    _debug(message) {
+        this.emit('debug', message);
+    }
+    _setResult() {
+        // determine whether there is an error
+        let error;
+        if (this.processExited) {
+            if (this.processError) {
+                error = new Error(`There was an error when attempting to execute the process '${this.toolPath}'. This may indicate the process failed to start. Error: ${this.processError}`);
+            }
+            else if (this.processExitCode !== 0 && !this.options.ignoreReturnCode) {
+                error = new Error(`The process '${this.toolPath}' failed with exit code ${this.processExitCode}`);
+            }
+            else if (this.processStderr && this.options.failOnStdErr) {
+                error = new Error(`The process '${this.toolPath}' failed because one or more lines were written to the STDERR stream`);
+            }
+        }
+        // clear the timeout
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+        this.done = true;
+        this.emit('done', error, this.processExitCode);
+    }
+    static HandleTimeout(state) {
+        if (state.done) {
+            return;
+        }
+        if (!state.processClosed && state.processExited) {
+            const message = `The STDIO streams did not close within ${state.delay /
+                1000} seconds of the exit event from process '${state.toolPath}'. This may indicate a child process inherited the STDIO streams and has not yet exited.`;
+            state._debug(message);
+        }
+        state._setResult();
+    }
+}
+//# sourceMappingURL=toolrunner.js.map
 
 /***/ }),
 /* 10 */
@@ -2401,7 +2948,7 @@ const tls_1 = __importDefault(__webpack_require__(818));
 const url_1 = __importDefault(__webpack_require__(835));
 const assert_1 = __importDefault(__webpack_require__(357));
 const debug_1 = __importDefault(__webpack_require__(784));
-const agent_base_1 = __webpack_require__(391);
+const agent_base_1 = __webpack_require__(494);
 const parse_proxy_response_1 = __importDefault(__webpack_require__(428));
 const debug = debug_1.default('https-proxy-agent:agent');
 /**
@@ -3073,7 +3620,7 @@ module.exports = function requireFromString(code, filename, opts) {
 
 const readline = __webpack_require__(58);
 const { action } = __webpack_require__(297);
-const EventEmitter = __webpack_require__(759);
+const EventEmitter = __webpack_require__(614);
 const { beep, cursor } = __webpack_require__(39);
 const color = __webpack_require__(713);
 
@@ -3724,7 +4271,7 @@ function unsafe (val, doUnesc) {
 // clobbering an fs object to create one of a different type.)
 
 const assert = __webpack_require__(357)
-const EE = __webpack_require__(759).EventEmitter
+const EE = __webpack_require__(614).EventEmitter
 const Parser = __webpack_require__(928)
 const fs = __webpack_require__(747)
 const fsm = __webpack_require__(827)
@@ -5119,7 +5666,7 @@ module.exports = new Type('tag:yaml.org,2002:timestamp', {
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 const parse = __webpack_require__(880)
-const stringify = __webpack_require__(986)
+const stringify = __webpack_require__(411)
 
 const JSON5 = {
     parse,
@@ -5782,7 +6329,7 @@ module.exports = TogglePrompt;
 /* 99 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
-const compareBuild = __webpack_require__(819)
+const compareBuild = __webpack_require__(512)
 const rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose))
 module.exports = rsort
 
@@ -13066,7 +13613,7 @@ module.exports = {
   lt: __webpack_require__(598),
   eq: __webpack_require__(541),
   neq: __webpack_require__(343),
-  gte: __webpack_require__(614),
+  gte: __webpack_require__(391),
   lte: __webpack_require__(130),
   cmp: __webpack_require__(561),
   coerce: __webpack_require__(249),
@@ -15367,7 +15914,7 @@ var Duplex;
 Readable.ReadableState = ReadableState;
 
 /*<replacement>*/
-var EE = __webpack_require__(759).EventEmitter;
+var EE = __webpack_require__(614).EventEmitter;
 
 var EElistenerCount = function (emitter, type) {
   return emitter.listeners(type).length;
@@ -16520,7 +17067,7 @@ module.exports = RemoteFetcher
  * @private
  */
 
-var EventEmitter = __webpack_require__(759).EventEmitter
+var EventEmitter = __webpack_require__(614).EventEmitter
 
 /**
  * Module exports.
@@ -16887,7 +17434,7 @@ module.exports = Header
 /* 233 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
-const compareBuild = __webpack_require__(819)
+const compareBuild = __webpack_require__(512)
 const sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose))
 module.exports = sort
 
@@ -20971,7 +21518,7 @@ module.exports = MultiselectPrompt;
 
 const fs = __webpack_require__(747)
 const path = __webpack_require__(622)
-const EE = __webpack_require__(759).EventEmitter
+const EE = __webpack_require__(614).EventEmitter
 const Minimatch = __webpack_require__(595).Minimatch
 
 class Walker extends EE {
@@ -23413,6 +23960,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__webpack_require__(470));
 const io = __importStar(__webpack_require__(1));
+const exec_1 = __webpack_require__(986);
 const npm_check_updates_1 = __importDefault(__webpack_require__(832));
 const lib_1 = __webpack_require__(795);
 function run() {
@@ -23421,7 +23969,8 @@ function run() {
             yield io.which('npm', true);
             const outdatedPackages = yield lib_1.executeOutdated();
             const packages = yield lib_1.convertToPackages(outdatedPackages);
-            yield npm_check_updates_1.default.run({ packageManager: 'npm' });
+            yield npm_check_updates_1.default.run({ packageManager: 'npm', upgrade: true });
+            yield exec_1.exec('npm install');
             core.setOutput('has_update', packages.length > 0 ? 'yes' : 'no');
             core.setOutput('formatted_as_json', JSON.stringify(packages));
             core.setOutput('formatted_as_columns', yield lib_1.formatAsColumns(packages));
@@ -26333,7 +26882,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const events_1 = __webpack_require__(759);
+const events_1 = __webpack_require__(614);
 const net = __webpack_require__(631);
 const ip = __webpack_require__(769);
 const smart_buffer_1 = __webpack_require__(118);
@@ -27938,207 +28487,10 @@ module.exports = new Type('tag:yaml.org,2002:js/undefined', {
 /* 391 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
-"use strict";
+const compare = __webpack_require__(436)
+const gte = (a, b, loose) => compare(a, b, loose) >= 0
+module.exports = gte
 
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-const events_1 = __webpack_require__(759);
-const debug_1 = __importDefault(__webpack_require__(784));
-const promisify_1 = __importDefault(__webpack_require__(756));
-const debug = debug_1.default('agent-base');
-function isAgent(v) {
-    return Boolean(v) && typeof v.addRequest === 'function';
-}
-function isSecureEndpoint() {
-    const { stack } = new Error();
-    if (typeof stack !== 'string')
-        return false;
-    return stack.split('\n').some(l => l.indexOf('(https.js:') !== -1);
-}
-function createAgent(callback, opts) {
-    return new createAgent.Agent(callback, opts);
-}
-(function (createAgent) {
-    /**
-     * Base `http.Agent` implementation.
-     * No pooling/keep-alive is implemented by default.
-     *
-     * @param {Function} callback
-     * @api public
-     */
-    class Agent extends events_1.EventEmitter {
-        constructor(callback, _opts) {
-            super();
-            let opts = _opts;
-            if (typeof callback === 'function') {
-                this.callback = callback;
-            }
-            else if (callback) {
-                opts = callback;
-            }
-            // Timeout for the socket to be returned from the callback
-            this.timeout = null;
-            if (opts && typeof opts.timeout === 'number') {
-                this.timeout = opts.timeout;
-            }
-            // These aren't actually used by `agent-base`, but are required
-            // for the TypeScript definition files in `@types/node` :/
-            this.maxFreeSockets = 1;
-            this.maxSockets = 1;
-            this.sockets = {};
-            this.requests = {};
-        }
-        get defaultPort() {
-            if (typeof this.explicitDefaultPort === 'number') {
-                return this.explicitDefaultPort;
-            }
-            return isSecureEndpoint() ? 443 : 80;
-        }
-        set defaultPort(v) {
-            this.explicitDefaultPort = v;
-        }
-        get protocol() {
-            if (typeof this.explicitProtocol === 'string') {
-                return this.explicitProtocol;
-            }
-            return isSecureEndpoint() ? 'https:' : 'http:';
-        }
-        set protocol(v) {
-            this.explicitProtocol = v;
-        }
-        callback(req, opts, fn) {
-            throw new Error('"agent-base" has no default implementation, you must subclass and override `callback()`');
-        }
-        /**
-         * Called by node-core's "_http_client.js" module when creating
-         * a new HTTP request with this Agent instance.
-         *
-         * @api public
-         */
-        addRequest(req, _opts) {
-            const opts = Object.assign({}, _opts);
-            if (typeof opts.secureEndpoint !== 'boolean') {
-                opts.secureEndpoint = isSecureEndpoint();
-            }
-            if (opts.host == null) {
-                opts.host = 'localhost';
-            }
-            if (opts.port == null) {
-                opts.port = opts.secureEndpoint ? 443 : 80;
-            }
-            if (opts.protocol == null) {
-                opts.protocol = opts.secureEndpoint ? 'https:' : 'http:';
-            }
-            if (opts.host && opts.path) {
-                // If both a `host` and `path` are specified then it's most
-                // likely the result of a `url.parse()` call... we need to
-                // remove the `path` portion so that `net.connect()` doesn't
-                // attempt to open that as a unix socket file.
-                delete opts.path;
-            }
-            delete opts.agent;
-            delete opts.hostname;
-            delete opts._defaultAgent;
-            delete opts.defaultPort;
-            delete opts.createConnection;
-            // Hint to use "Connection: close"
-            // XXX: non-documented `http` module API :(
-            req._last = true;
-            req.shouldKeepAlive = false;
-            let timedOut = false;
-            let timeoutId = null;
-            const timeoutMs = opts.timeout || this.timeout;
-            const onerror = (err) => {
-                if (req._hadError)
-                    return;
-                req.emit('error', err);
-                // For Safety. Some additional errors might fire later on
-                // and we need to make sure we don't double-fire the error event.
-                req._hadError = true;
-            };
-            const ontimeout = () => {
-                timeoutId = null;
-                timedOut = true;
-                const err = new Error(`A "socket" was not created for HTTP request before ${timeoutMs}ms`);
-                err.code = 'ETIMEOUT';
-                onerror(err);
-            };
-            const callbackError = (err) => {
-                if (timedOut)
-                    return;
-                if (timeoutId !== null) {
-                    clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-                onerror(err);
-            };
-            const onsocket = (socket) => {
-                if (timedOut)
-                    return;
-                if (timeoutId != null) {
-                    clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-                if (isAgent(socket)) {
-                    // `socket` is actually an `http.Agent` instance, so
-                    // relinquish responsibility for this `req` to the Agent
-                    // from here on
-                    debug('Callback returned another Agent instance %o', socket.constructor.name);
-                    socket.addRequest(req, opts);
-                    return;
-                }
-                if (socket) {
-                    socket.once('free', () => {
-                        this.freeSocket(socket, opts);
-                    });
-                    req.onSocket(socket);
-                    return;
-                }
-                const err = new Error(`no Duplex stream was returned to agent-base for \`${req.method} ${req.path}\``);
-                onerror(err);
-            };
-            if (typeof this.callback !== 'function') {
-                onerror(new Error('`callback` is not defined'));
-                return;
-            }
-            if (!this.promisifiedCallback) {
-                if (this.callback.length >= 3) {
-                    debug('Converting legacy callback function to promise');
-                    this.promisifiedCallback = promisify_1.default(this.callback);
-                }
-                else {
-                    this.promisifiedCallback = this.callback;
-                }
-            }
-            if (typeof timeoutMs === 'number' && timeoutMs > 0) {
-                timeoutId = setTimeout(ontimeout, timeoutMs);
-            }
-            if ('port' in opts && typeof opts.port !== 'number') {
-                opts.port = Number(opts.port);
-            }
-            try {
-                debug('Resolving socket for %o request: %o', opts.protocol, `${req.method} ${req.path}`);
-                Promise.resolve(this.promisifiedCallback(req, opts)).then(onsocket, callbackError);
-            }
-            catch (err) {
-                Promise.reject(err).catch(callbackError);
-            }
-        }
-        freeSocket(socket, opts) {
-            debug('Freeing socket %o %o', socket.constructor.name, opts);
-            socket.destroy();
-        }
-        destroy() {
-            debug('Destroying agent %o', this.constructor.name);
-        }
-    }
-    createAgent.Agent = Agent;
-    // So that `instanceof` works correctly
-    createAgent.prototype = createAgent.Agent.prototype;
-})(createAgent || (createAgent = {}));
-module.exports = createAgent;
-//# sourceMappingURL=index.js.map
 
 /***/ }),
 /* 392 */
@@ -28491,7 +28843,7 @@ var rp = __webpack_require__(302)
 var minimatch = __webpack_require__(595)
 var Minimatch = minimatch.Minimatch
 var inherits = __webpack_require__(689)
-var EE = __webpack_require__(759).EventEmitter
+var EE = __webpack_require__(614).EventEmitter
 var path = __webpack_require__(622)
 var assert = __webpack_require__(357)
 var isAbsolute = __webpack_require__(681)
@@ -29703,7 +30055,273 @@ function readdirOrEmpty (dir) {
 /* 408 */,
 /* 409 */,
 /* 410 */,
-/* 411 */,
+/* 411 */
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const util = __webpack_require__(299)
+
+module.exports = function stringify (value, replacer, space) {
+    const stack = []
+    let indent = ''
+    let propertyList
+    let replacerFunc
+    let gap = ''
+    let quote
+
+    if (
+        replacer != null &&
+        typeof replacer === 'object' &&
+        !Array.isArray(replacer)
+    ) {
+        space = replacer.space
+        quote = replacer.quote
+        replacer = replacer.replacer
+    }
+
+    if (typeof replacer === 'function') {
+        replacerFunc = replacer
+    } else if (Array.isArray(replacer)) {
+        propertyList = []
+        for (const v of replacer) {
+            let item
+
+            if (typeof v === 'string') {
+                item = v
+            } else if (
+                typeof v === 'number' ||
+                v instanceof String ||
+                v instanceof Number
+            ) {
+                item = String(v)
+            }
+
+            if (item !== undefined && propertyList.indexOf(item) < 0) {
+                propertyList.push(item)
+            }
+        }
+    }
+
+    if (space instanceof Number) {
+        space = Number(space)
+    } else if (space instanceof String) {
+        space = String(space)
+    }
+
+    if (typeof space === 'number') {
+        if (space > 0) {
+            space = Math.min(10, Math.floor(space))
+            gap = '          '.substr(0, space)
+        }
+    } else if (typeof space === 'string') {
+        gap = space.substr(0, 10)
+    }
+
+    return serializeProperty('', {'': value})
+
+    function serializeProperty (key, holder) {
+        let value = holder[key]
+        if (value != null) {
+            if (typeof value.toJSON5 === 'function') {
+                value = value.toJSON5(key)
+            } else if (typeof value.toJSON === 'function') {
+                value = value.toJSON(key)
+            }
+        }
+
+        if (replacerFunc) {
+            value = replacerFunc.call(holder, key, value)
+        }
+
+        if (value instanceof Number) {
+            value = Number(value)
+        } else if (value instanceof String) {
+            value = String(value)
+        } else if (value instanceof Boolean) {
+            value = value.valueOf()
+        }
+
+        switch (value) {
+        case null: return 'null'
+        case true: return 'true'
+        case false: return 'false'
+        }
+
+        if (typeof value === 'string') {
+            return quoteString(value, false)
+        }
+
+        if (typeof value === 'number') {
+            return String(value)
+        }
+
+        if (typeof value === 'object') {
+            return Array.isArray(value) ? serializeArray(value) : serializeObject(value)
+        }
+
+        return undefined
+    }
+
+    function quoteString (value) {
+        const quotes = {
+            "'": 0.1,
+            '"': 0.2,
+        }
+
+        const replacements = {
+            "'": "\\'",
+            '"': '\\"',
+            '\\': '\\\\',
+            '\b': '\\b',
+            '\f': '\\f',
+            '\n': '\\n',
+            '\r': '\\r',
+            '\t': '\\t',
+            '\v': '\\v',
+            '\0': '\\0',
+            '\u2028': '\\u2028',
+            '\u2029': '\\u2029',
+        }
+
+        let product = ''
+
+        for (let i = 0; i < value.length; i++) {
+            const c = value[i]
+            switch (c) {
+            case "'":
+            case '"':
+                quotes[c]++
+                product += c
+                continue
+
+            case '\0':
+                if (util.isDigit(value[i + 1])) {
+                    product += '\\x00'
+                    continue
+                }
+            }
+
+            if (replacements[c]) {
+                product += replacements[c]
+                continue
+            }
+
+            if (c < ' ') {
+                let hexString = c.charCodeAt(0).toString(16)
+                product += '\\x' + ('00' + hexString).substring(hexString.length)
+                continue
+            }
+
+            product += c
+        }
+
+        const quoteChar = quote || Object.keys(quotes).reduce((a, b) => (quotes[a] < quotes[b]) ? a : b)
+
+        product = product.replace(new RegExp(quoteChar, 'g'), replacements[quoteChar])
+
+        return quoteChar + product + quoteChar
+    }
+
+    function serializeObject (value) {
+        if (stack.indexOf(value) >= 0) {
+            throw TypeError('Converting circular structure to JSON5')
+        }
+
+        stack.push(value)
+
+        let stepback = indent
+        indent = indent + gap
+
+        let keys = propertyList || Object.keys(value)
+        let partial = []
+        for (const key of keys) {
+            const propertyString = serializeProperty(key, value)
+            if (propertyString !== undefined) {
+                let member = serializeKey(key) + ':'
+                if (gap !== '') {
+                    member += ' '
+                }
+                member += propertyString
+                partial.push(member)
+            }
+        }
+
+        let final
+        if (partial.length === 0) {
+            final = '{}'
+        } else {
+            let properties
+            if (gap === '') {
+                properties = partial.join(',')
+                final = '{' + properties + '}'
+            } else {
+                let separator = ',\n' + indent
+                properties = partial.join(separator)
+                final = '{\n' + indent + properties + ',\n' + stepback + '}'
+            }
+        }
+
+        stack.pop()
+        indent = stepback
+        return final
+    }
+
+    function serializeKey (key) {
+        if (key.length === 0) {
+            return quoteString(key, true)
+        }
+
+        const firstChar = String.fromCodePoint(key.codePointAt(0))
+        if (!util.isIdStartChar(firstChar)) {
+            return quoteString(key, true)
+        }
+
+        for (let i = firstChar.length; i < key.length; i++) {
+            if (!util.isIdContinueChar(String.fromCodePoint(key.codePointAt(i)))) {
+                return quoteString(key, true)
+            }
+        }
+
+        return key
+    }
+
+    function serializeArray (value) {
+        if (stack.indexOf(value) >= 0) {
+            throw TypeError('Converting circular structure to JSON5')
+        }
+
+        stack.push(value)
+
+        let stepback = indent
+        indent = indent + gap
+
+        let partial = []
+        for (let i = 0; i < value.length; i++) {
+            const propertyString = serializeProperty(String(i), value)
+            partial.push((propertyString !== undefined) ? propertyString : 'null')
+        }
+
+        let final
+        if (partial.length === 0) {
+            final = '[]'
+        } else {
+            if (gap === '') {
+                let properties = partial.join(',')
+                final = '[' + properties + ']'
+            } else {
+                let separator = ',\n' + indent
+                let properties = partial.join(separator)
+                final = '[\n' + indent + properties + ',\n' + stepback + ']'
+            }
+        }
+
+        stack.pop()
+        indent = stepback
+        return final
+    }
+}
+
+
+/***/ }),
 /* 412 */,
 /* 413 */
 /***/ (function(module) {
@@ -29718,7 +30336,7 @@ module.exports = require("stream");
 
 
 
-var yaml = __webpack_require__(9);
+var yaml = __webpack_require__(819);
 
 
 module.exports = yaml;
@@ -35222,7 +35840,212 @@ __export(__webpack_require__(359));
 //# sourceMappingURL=index.js.map
 
 /***/ }),
-/* 494 */,
+/* 494 */
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+const events_1 = __webpack_require__(614);
+const debug_1 = __importDefault(__webpack_require__(784));
+const promisify_1 = __importDefault(__webpack_require__(756));
+const debug = debug_1.default('agent-base');
+function isAgent(v) {
+    return Boolean(v) && typeof v.addRequest === 'function';
+}
+function isSecureEndpoint() {
+    const { stack } = new Error();
+    if (typeof stack !== 'string')
+        return false;
+    return stack.split('\n').some(l => l.indexOf('(https.js:') !== -1);
+}
+function createAgent(callback, opts) {
+    return new createAgent.Agent(callback, opts);
+}
+(function (createAgent) {
+    /**
+     * Base `http.Agent` implementation.
+     * No pooling/keep-alive is implemented by default.
+     *
+     * @param {Function} callback
+     * @api public
+     */
+    class Agent extends events_1.EventEmitter {
+        constructor(callback, _opts) {
+            super();
+            let opts = _opts;
+            if (typeof callback === 'function') {
+                this.callback = callback;
+            }
+            else if (callback) {
+                opts = callback;
+            }
+            // Timeout for the socket to be returned from the callback
+            this.timeout = null;
+            if (opts && typeof opts.timeout === 'number') {
+                this.timeout = opts.timeout;
+            }
+            // These aren't actually used by `agent-base`, but are required
+            // for the TypeScript definition files in `@types/node` :/
+            this.maxFreeSockets = 1;
+            this.maxSockets = 1;
+            this.sockets = {};
+            this.requests = {};
+        }
+        get defaultPort() {
+            if (typeof this.explicitDefaultPort === 'number') {
+                return this.explicitDefaultPort;
+            }
+            return isSecureEndpoint() ? 443 : 80;
+        }
+        set defaultPort(v) {
+            this.explicitDefaultPort = v;
+        }
+        get protocol() {
+            if (typeof this.explicitProtocol === 'string') {
+                return this.explicitProtocol;
+            }
+            return isSecureEndpoint() ? 'https:' : 'http:';
+        }
+        set protocol(v) {
+            this.explicitProtocol = v;
+        }
+        callback(req, opts, fn) {
+            throw new Error('"agent-base" has no default implementation, you must subclass and override `callback()`');
+        }
+        /**
+         * Called by node-core's "_http_client.js" module when creating
+         * a new HTTP request with this Agent instance.
+         *
+         * @api public
+         */
+        addRequest(req, _opts) {
+            const opts = Object.assign({}, _opts);
+            if (typeof opts.secureEndpoint !== 'boolean') {
+                opts.secureEndpoint = isSecureEndpoint();
+            }
+            if (opts.host == null) {
+                opts.host = 'localhost';
+            }
+            if (opts.port == null) {
+                opts.port = opts.secureEndpoint ? 443 : 80;
+            }
+            if (opts.protocol == null) {
+                opts.protocol = opts.secureEndpoint ? 'https:' : 'http:';
+            }
+            if (opts.host && opts.path) {
+                // If both a `host` and `path` are specified then it's most
+                // likely the result of a `url.parse()` call... we need to
+                // remove the `path` portion so that `net.connect()` doesn't
+                // attempt to open that as a unix socket file.
+                delete opts.path;
+            }
+            delete opts.agent;
+            delete opts.hostname;
+            delete opts._defaultAgent;
+            delete opts.defaultPort;
+            delete opts.createConnection;
+            // Hint to use "Connection: close"
+            // XXX: non-documented `http` module API :(
+            req._last = true;
+            req.shouldKeepAlive = false;
+            let timedOut = false;
+            let timeoutId = null;
+            const timeoutMs = opts.timeout || this.timeout;
+            const onerror = (err) => {
+                if (req._hadError)
+                    return;
+                req.emit('error', err);
+                // For Safety. Some additional errors might fire later on
+                // and we need to make sure we don't double-fire the error event.
+                req._hadError = true;
+            };
+            const ontimeout = () => {
+                timeoutId = null;
+                timedOut = true;
+                const err = new Error(`A "socket" was not created for HTTP request before ${timeoutMs}ms`);
+                err.code = 'ETIMEOUT';
+                onerror(err);
+            };
+            const callbackError = (err) => {
+                if (timedOut)
+                    return;
+                if (timeoutId !== null) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                onerror(err);
+            };
+            const onsocket = (socket) => {
+                if (timedOut)
+                    return;
+                if (timeoutId != null) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                if (isAgent(socket)) {
+                    // `socket` is actually an `http.Agent` instance, so
+                    // relinquish responsibility for this `req` to the Agent
+                    // from here on
+                    debug('Callback returned another Agent instance %o', socket.constructor.name);
+                    socket.addRequest(req, opts);
+                    return;
+                }
+                if (socket) {
+                    socket.once('free', () => {
+                        this.freeSocket(socket, opts);
+                    });
+                    req.onSocket(socket);
+                    return;
+                }
+                const err = new Error(`no Duplex stream was returned to agent-base for \`${req.method} ${req.path}\``);
+                onerror(err);
+            };
+            if (typeof this.callback !== 'function') {
+                onerror(new Error('`callback` is not defined'));
+                return;
+            }
+            if (!this.promisifiedCallback) {
+                if (this.callback.length >= 3) {
+                    debug('Converting legacy callback function to promise');
+                    this.promisifiedCallback = promisify_1.default(this.callback);
+                }
+                else {
+                    this.promisifiedCallback = this.callback;
+                }
+            }
+            if (typeof timeoutMs === 'number' && timeoutMs > 0) {
+                timeoutId = setTimeout(ontimeout, timeoutMs);
+            }
+            if ('port' in opts && typeof opts.port !== 'number') {
+                opts.port = Number(opts.port);
+            }
+            try {
+                debug('Resolving socket for %o request: %o', opts.protocol, `${req.method} ${req.path}`);
+                Promise.resolve(this.promisifiedCallback(req, opts)).then(onsocket, callbackError);
+            }
+            catch (err) {
+                Promise.reject(err).catch(callbackError);
+            }
+        }
+        freeSocket(socket, opts) {
+            debug('Freeing socket %o %o', socket.constructor.name, opts);
+            socket.destroy();
+        }
+        destroy() {
+            debug('Destroying agent %o', this.constructor.name);
+        }
+    }
+    createAgent.Agent = Agent;
+    // So that `instanceof` works correctly
+    createAgent.prototype = createAgent.Agent.prototype;
+})(createAgent || (createAgent = {}));
+module.exports = createAgent;
+//# sourceMappingURL=index.js.map
+
+/***/ }),
 /* 495 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
@@ -36121,7 +36944,19 @@ module.exports = AutocompleteMultiselectPrompt;
 /***/ }),
 /* 510 */,
 /* 511 */,
-/* 512 */,
+/* 512 */
+/***/ (function(module, __unusedexports, __webpack_require__) {
+
+const SemVer = __webpack_require__(711)
+const compareBuild = (a, b, loose) => {
+  const versionA = new SemVer(a, loose)
+  const versionB = new SemVer(b, loose)
+  return versionA.compare(versionB) || versionA.compareBuild(versionB)
+}
+module.exports = compareBuild
+
+
+/***/ }),
 /* 513 */,
 /* 514 */,
 /* 515 */,
@@ -56739,7 +57574,7 @@ module.exports = {
   DatePrompt: __webpack_require__(564),
   NumberPrompt: __webpack_require__(692),
   MultiselectPrompt: __webpack_require__(987),
-  AutocompletePrompt: __webpack_require__(785),
+  AutocompletePrompt: __webpack_require__(850),
   AutocompleteMultiselectPrompt: __webpack_require__(799),
   ConfirmPrompt: __webpack_require__(429)
 };
@@ -56761,7 +57596,7 @@ module.exports = rcompare
 const eq = __webpack_require__(541)
 const neq = __webpack_require__(343)
 const gt = __webpack_require__(821)
-const gte = __webpack_require__(614)
+const gte = __webpack_require__(391)
 const lt = __webpack_require__(598)
 const lte = __webpack_require__(130)
 
@@ -56840,13 +57675,13 @@ module.exports = {
   inc: __webpack_require__(518),
   diff: __webpack_require__(199),
   major: __webpack_require__(449),
-  minor: __webpack_require__(850),
+  minor: __webpack_require__(759),
   patch: __webpack_require__(609),
   prerelease: __webpack_require__(948),
   compare: __webpack_require__(748),
   rcompare: __webpack_require__(508),
   compareLoose: __webpack_require__(86),
-  compareBuild: __webpack_require__(819),
+  compareBuild: __webpack_require__(512),
   sort: __webpack_require__(233),
   rsort: __webpack_require__(99),
   gt: __webpack_require__(736),
@@ -61200,12 +62035,9 @@ try {
 /***/ }),
 /* 613 */,
 /* 614 */
-/***/ (function(module, __unusedexports, __webpack_require__) {
+/***/ (function(module) {
 
-const compare = __webpack_require__(436)
-const gte = (a, b, loose) => compare(a, b, loose) >= 0
-module.exports = gte
-
+module.exports = require("events");
 
 /***/ }),
 /* 615 */
@@ -63953,7 +64785,7 @@ module.exports = patch
 
 const fs = __webpack_require__(747)
 const path = __webpack_require__(622)
-const EE = __webpack_require__(759).EventEmitter
+const EE = __webpack_require__(614).EventEmitter
 // we don't care about the package bins, but we share a pj cache
 // with other modules that DO care about it, so keep it nice.
 const normalizePackageBin = __webpack_require__(812)
@@ -64482,599 +65314,7 @@ module.exports = pathArg
 
 
 /***/ }),
-/* 658 */
-/***/ (function(__unusedmodule, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const os = __webpack_require__(87);
-const events = __webpack_require__(759);
-const child = __webpack_require__(129);
-const path = __webpack_require__(622);
-const io = __webpack_require__(1);
-const ioUtil = __webpack_require__(672);
-/* eslint-disable @typescript-eslint/unbound-method */
-const IS_WINDOWS = process.platform === 'win32';
-/*
- * Class for running command line tools. Handles quoting and arg parsing in a platform agnostic way.
- */
-class ToolRunner extends events.EventEmitter {
-    constructor(toolPath, args, options) {
-        super();
-        if (!toolPath) {
-            throw new Error("Parameter 'toolPath' cannot be null or empty.");
-        }
-        this.toolPath = toolPath;
-        this.args = args || [];
-        this.options = options || {};
-    }
-    _debug(message) {
-        if (this.options.listeners && this.options.listeners.debug) {
-            this.options.listeners.debug(message);
-        }
-    }
-    _getCommandString(options, noPrefix) {
-        const toolPath = this._getSpawnFileName();
-        const args = this._getSpawnArgs(options);
-        let cmd = noPrefix ? '' : '[command]'; // omit prefix when piped to a second tool
-        if (IS_WINDOWS) {
-            // Windows + cmd file
-            if (this._isCmdFile()) {
-                cmd += toolPath;
-                for (const a of args) {
-                    cmd += ` ${a}`;
-                }
-            }
-            // Windows + verbatim
-            else if (options.windowsVerbatimArguments) {
-                cmd += `"${toolPath}"`;
-                for (const a of args) {
-                    cmd += ` ${a}`;
-                }
-            }
-            // Windows (regular)
-            else {
-                cmd += this._windowsQuoteCmdArg(toolPath);
-                for (const a of args) {
-                    cmd += ` ${this._windowsQuoteCmdArg(a)}`;
-                }
-            }
-        }
-        else {
-            // OSX/Linux - this can likely be improved with some form of quoting.
-            // creating processes on Unix is fundamentally different than Windows.
-            // on Unix, execvp() takes an arg array.
-            cmd += toolPath;
-            for (const a of args) {
-                cmd += ` ${a}`;
-            }
-        }
-        return cmd;
-    }
-    _processLineBuffer(data, strBuffer, onLine) {
-        try {
-            let s = strBuffer + data.toString();
-            let n = s.indexOf(os.EOL);
-            while (n > -1) {
-                const line = s.substring(0, n);
-                onLine(line);
-                // the rest of the string ...
-                s = s.substring(n + os.EOL.length);
-                n = s.indexOf(os.EOL);
-            }
-            strBuffer = s;
-        }
-        catch (err) {
-            // streaming lines to console is best effort.  Don't fail a build.
-            this._debug(`error processing line. Failed with error ${err}`);
-        }
-    }
-    _getSpawnFileName() {
-        if (IS_WINDOWS) {
-            if (this._isCmdFile()) {
-                return process.env['COMSPEC'] || 'cmd.exe';
-            }
-        }
-        return this.toolPath;
-    }
-    _getSpawnArgs(options) {
-        if (IS_WINDOWS) {
-            if (this._isCmdFile()) {
-                let argline = `/D /S /C "${this._windowsQuoteCmdArg(this.toolPath)}`;
-                for (const a of this.args) {
-                    argline += ' ';
-                    argline += options.windowsVerbatimArguments
-                        ? a
-                        : this._windowsQuoteCmdArg(a);
-                }
-                argline += '"';
-                return [argline];
-            }
-        }
-        return this.args;
-    }
-    _endsWith(str, end) {
-        return str.endsWith(end);
-    }
-    _isCmdFile() {
-        const upperToolPath = this.toolPath.toUpperCase();
-        return (this._endsWith(upperToolPath, '.CMD') ||
-            this._endsWith(upperToolPath, '.BAT'));
-    }
-    _windowsQuoteCmdArg(arg) {
-        // for .exe, apply the normal quoting rules that libuv applies
-        if (!this._isCmdFile()) {
-            return this._uvQuoteCmdArg(arg);
-        }
-        // otherwise apply quoting rules specific to the cmd.exe command line parser.
-        // the libuv rules are generic and are not designed specifically for cmd.exe
-        // command line parser.
-        //
-        // for a detailed description of the cmd.exe command line parser, refer to
-        // http://stackoverflow.com/questions/4094699/how-does-the-windows-command-interpreter-cmd-exe-parse-scripts/7970912#7970912
-        // need quotes for empty arg
-        if (!arg) {
-            return '""';
-        }
-        // determine whether the arg needs to be quoted
-        const cmdSpecialChars = [
-            ' ',
-            '\t',
-            '&',
-            '(',
-            ')',
-            '[',
-            ']',
-            '{',
-            '}',
-            '^',
-            '=',
-            ';',
-            '!',
-            "'",
-            '+',
-            ',',
-            '`',
-            '~',
-            '|',
-            '<',
-            '>',
-            '"'
-        ];
-        let needsQuotes = false;
-        for (const char of arg) {
-            if (cmdSpecialChars.some(x => x === char)) {
-                needsQuotes = true;
-                break;
-            }
-        }
-        // short-circuit if quotes not needed
-        if (!needsQuotes) {
-            return arg;
-        }
-        // the following quoting rules are very similar to the rules that by libuv applies.
-        //
-        // 1) wrap the string in quotes
-        //
-        // 2) double-up quotes - i.e. " => ""
-        //
-        //    this is different from the libuv quoting rules. libuv replaces " with \", which unfortunately
-        //    doesn't work well with a cmd.exe command line.
-        //
-        //    note, replacing " with "" also works well if the arg is passed to a downstream .NET console app.
-        //    for example, the command line:
-        //          foo.exe "myarg:""my val"""
-        //    is parsed by a .NET console app into an arg array:
-        //          [ "myarg:\"my val\"" ]
-        //    which is the same end result when applying libuv quoting rules. although the actual
-        //    command line from libuv quoting rules would look like:
-        //          foo.exe "myarg:\"my val\""
-        //
-        // 3) double-up slashes that precede a quote,
-        //    e.g.  hello \world    => "hello \world"
-        //          hello\"world    => "hello\\""world"
-        //          hello\\"world   => "hello\\\\""world"
-        //          hello world\    => "hello world\\"
-        //
-        //    technically this is not required for a cmd.exe command line, or the batch argument parser.
-        //    the reasons for including this as a .cmd quoting rule are:
-        //
-        //    a) this is optimized for the scenario where the argument is passed from the .cmd file to an
-        //       external program. many programs (e.g. .NET console apps) rely on the slash-doubling rule.
-        //
-        //    b) it's what we've been doing previously (by deferring to node default behavior) and we
-        //       haven't heard any complaints about that aspect.
-        //
-        // note, a weakness of the quoting rules chosen here, is that % is not escaped. in fact, % cannot be
-        // escaped when used on the command line directly - even though within a .cmd file % can be escaped
-        // by using %%.
-        //
-        // the saving grace is, on the command line, %var% is left as-is if var is not defined. this contrasts
-        // the line parsing rules within a .cmd file, where if var is not defined it is replaced with nothing.
-        //
-        // one option that was explored was replacing % with ^% - i.e. %var% => ^%var^%. this hack would
-        // often work, since it is unlikely that var^ would exist, and the ^ character is removed when the
-        // variable is used. the problem, however, is that ^ is not removed when %* is used to pass the args
-        // to an external program.
-        //
-        // an unexplored potential solution for the % escaping problem, is to create a wrapper .cmd file.
-        // % can be escaped within a .cmd file.
-        let reverse = '"';
-        let quoteHit = true;
-        for (let i = arg.length; i > 0; i--) {
-            // walk the string in reverse
-            reverse += arg[i - 1];
-            if (quoteHit && arg[i - 1] === '\\') {
-                reverse += '\\'; // double the slash
-            }
-            else if (arg[i - 1] === '"') {
-                quoteHit = true;
-                reverse += '"'; // double the quote
-            }
-            else {
-                quoteHit = false;
-            }
-        }
-        reverse += '"';
-        return reverse
-            .split('')
-            .reverse()
-            .join('');
-    }
-    _uvQuoteCmdArg(arg) {
-        // Tool runner wraps child_process.spawn() and needs to apply the same quoting as
-        // Node in certain cases where the undocumented spawn option windowsVerbatimArguments
-        // is used.
-        //
-        // Since this function is a port of quote_cmd_arg from Node 4.x (technically, lib UV,
-        // see https://github.com/nodejs/node/blob/v4.x/deps/uv/src/win/process.c for details),
-        // pasting copyright notice from Node within this function:
-        //
-        //      Copyright Joyent, Inc. and other Node contributors. All rights reserved.
-        //
-        //      Permission is hereby granted, free of charge, to any person obtaining a copy
-        //      of this software and associated documentation files (the "Software"), to
-        //      deal in the Software without restriction, including without limitation the
-        //      rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-        //      sell copies of the Software, and to permit persons to whom the Software is
-        //      furnished to do so, subject to the following conditions:
-        //
-        //      The above copyright notice and this permission notice shall be included in
-        //      all copies or substantial portions of the Software.
-        //
-        //      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-        //      IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-        //      FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-        //      AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-        //      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-        //      FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-        //      IN THE SOFTWARE.
-        if (!arg) {
-            // Need double quotation for empty argument
-            return '""';
-        }
-        if (!arg.includes(' ') && !arg.includes('\t') && !arg.includes('"')) {
-            // No quotation needed
-            return arg;
-        }
-        if (!arg.includes('"') && !arg.includes('\\')) {
-            // No embedded double quotes or backslashes, so I can just wrap
-            // quote marks around the whole thing.
-            return `"${arg}"`;
-        }
-        // Expected input/output:
-        //   input : hello"world
-        //   output: "hello\"world"
-        //   input : hello""world
-        //   output: "hello\"\"world"
-        //   input : hello\world
-        //   output: hello\world
-        //   input : hello\\world
-        //   output: hello\\world
-        //   input : hello\"world
-        //   output: "hello\\\"world"
-        //   input : hello\\"world
-        //   output: "hello\\\\\"world"
-        //   input : hello world\
-        //   output: "hello world\\" - note the comment in libuv actually reads "hello world\"
-        //                             but it appears the comment is wrong, it should be "hello world\\"
-        let reverse = '"';
-        let quoteHit = true;
-        for (let i = arg.length; i > 0; i--) {
-            // walk the string in reverse
-            reverse += arg[i - 1];
-            if (quoteHit && arg[i - 1] === '\\') {
-                reverse += '\\';
-            }
-            else if (arg[i - 1] === '"') {
-                quoteHit = true;
-                reverse += '\\';
-            }
-            else {
-                quoteHit = false;
-            }
-        }
-        reverse += '"';
-        return reverse
-            .split('')
-            .reverse()
-            .join('');
-    }
-    _cloneExecOptions(options) {
-        options = options || {};
-        const result = {
-            cwd: options.cwd || process.cwd(),
-            env: options.env || process.env,
-            silent: options.silent || false,
-            windowsVerbatimArguments: options.windowsVerbatimArguments || false,
-            failOnStdErr: options.failOnStdErr || false,
-            ignoreReturnCode: options.ignoreReturnCode || false,
-            delay: options.delay || 10000
-        };
-        result.outStream = options.outStream || process.stdout;
-        result.errStream = options.errStream || process.stderr;
-        return result;
-    }
-    _getSpawnOptions(options, toolPath) {
-        options = options || {};
-        const result = {};
-        result.cwd = options.cwd;
-        result.env = options.env;
-        result['windowsVerbatimArguments'] =
-            options.windowsVerbatimArguments || this._isCmdFile();
-        if (options.windowsVerbatimArguments) {
-            result.argv0 = `"${toolPath}"`;
-        }
-        return result;
-    }
-    /**
-     * Exec a tool.
-     * Output will be streamed to the live console.
-     * Returns promise with return code
-     *
-     * @param     tool     path to tool to exec
-     * @param     options  optional exec options.  See ExecOptions
-     * @returns   number
-     */
-    exec() {
-        return __awaiter(this, void 0, void 0, function* () {
-            // root the tool path if it is unrooted and contains relative pathing
-            if (!ioUtil.isRooted(this.toolPath) &&
-                (this.toolPath.includes('/') ||
-                    (IS_WINDOWS && this.toolPath.includes('\\')))) {
-                // prefer options.cwd if it is specified, however options.cwd may also need to be rooted
-                this.toolPath = path.resolve(process.cwd(), this.options.cwd || process.cwd(), this.toolPath);
-            }
-            // if the tool is only a file name, then resolve it from the PATH
-            // otherwise verify it exists (add extension on Windows if necessary)
-            this.toolPath = yield io.which(this.toolPath, true);
-            return new Promise((resolve, reject) => {
-                this._debug(`exec tool: ${this.toolPath}`);
-                this._debug('arguments:');
-                for (const arg of this.args) {
-                    this._debug(`   ${arg}`);
-                }
-                const optionsNonNull = this._cloneExecOptions(this.options);
-                if (!optionsNonNull.silent && optionsNonNull.outStream) {
-                    optionsNonNull.outStream.write(this._getCommandString(optionsNonNull) + os.EOL);
-                }
-                const state = new ExecState(optionsNonNull, this.toolPath);
-                state.on('debug', (message) => {
-                    this._debug(message);
-                });
-                const fileName = this._getSpawnFileName();
-                const cp = child.spawn(fileName, this._getSpawnArgs(optionsNonNull), this._getSpawnOptions(this.options, fileName));
-                const stdbuffer = '';
-                if (cp.stdout) {
-                    cp.stdout.on('data', (data) => {
-                        if (this.options.listeners && this.options.listeners.stdout) {
-                            this.options.listeners.stdout(data);
-                        }
-                        if (!optionsNonNull.silent && optionsNonNull.outStream) {
-                            optionsNonNull.outStream.write(data);
-                        }
-                        this._processLineBuffer(data, stdbuffer, (line) => {
-                            if (this.options.listeners && this.options.listeners.stdline) {
-                                this.options.listeners.stdline(line);
-                            }
-                        });
-                    });
-                }
-                const errbuffer = '';
-                if (cp.stderr) {
-                    cp.stderr.on('data', (data) => {
-                        state.processStderr = true;
-                        if (this.options.listeners && this.options.listeners.stderr) {
-                            this.options.listeners.stderr(data);
-                        }
-                        if (!optionsNonNull.silent &&
-                            optionsNonNull.errStream &&
-                            optionsNonNull.outStream) {
-                            const s = optionsNonNull.failOnStdErr
-                                ? optionsNonNull.errStream
-                                : optionsNonNull.outStream;
-                            s.write(data);
-                        }
-                        this._processLineBuffer(data, errbuffer, (line) => {
-                            if (this.options.listeners && this.options.listeners.errline) {
-                                this.options.listeners.errline(line);
-                            }
-                        });
-                    });
-                }
-                cp.on('error', (err) => {
-                    state.processError = err.message;
-                    state.processExited = true;
-                    state.processClosed = true;
-                    state.CheckComplete();
-                });
-                cp.on('exit', (code) => {
-                    state.processExitCode = code;
-                    state.processExited = true;
-                    this._debug(`Exit code ${code} received from tool '${this.toolPath}'`);
-                    state.CheckComplete();
-                });
-                cp.on('close', (code) => {
-                    state.processExitCode = code;
-                    state.processExited = true;
-                    state.processClosed = true;
-                    this._debug(`STDIO streams have closed for tool '${this.toolPath}'`);
-                    state.CheckComplete();
-                });
-                state.on('done', (error, exitCode) => {
-                    if (stdbuffer.length > 0) {
-                        this.emit('stdline', stdbuffer);
-                    }
-                    if (errbuffer.length > 0) {
-                        this.emit('errline', errbuffer);
-                    }
-                    cp.removeAllListeners();
-                    if (error) {
-                        reject(error);
-                    }
-                    else {
-                        resolve(exitCode);
-                    }
-                });
-            });
-        });
-    }
-}
-exports.ToolRunner = ToolRunner;
-/**
- * Convert an arg string to an array of args. Handles escaping
- *
- * @param    argString   string of arguments
- * @returns  string[]    array of arguments
- */
-function argStringToArray(argString) {
-    const args = [];
-    let inQuotes = false;
-    let escaped = false;
-    let arg = '';
-    function append(c) {
-        // we only escape double quotes.
-        if (escaped && c !== '"') {
-            arg += '\\';
-        }
-        arg += c;
-        escaped = false;
-    }
-    for (let i = 0; i < argString.length; i++) {
-        const c = argString.charAt(i);
-        if (c === '"') {
-            if (!escaped) {
-                inQuotes = !inQuotes;
-            }
-            else {
-                append(c);
-            }
-            continue;
-        }
-        if (c === '\\' && escaped) {
-            append(c);
-            continue;
-        }
-        if (c === '\\' && inQuotes) {
-            escaped = true;
-            continue;
-        }
-        if (c === ' ' && !inQuotes) {
-            if (arg.length > 0) {
-                args.push(arg);
-                arg = '';
-            }
-            continue;
-        }
-        append(c);
-    }
-    if (arg.length > 0) {
-        args.push(arg.trim());
-    }
-    return args;
-}
-exports.argStringToArray = argStringToArray;
-class ExecState extends events.EventEmitter {
-    constructor(options, toolPath) {
-        super();
-        this.processClosed = false; // tracks whether the process has exited and stdio is closed
-        this.processError = '';
-        this.processExitCode = 0;
-        this.processExited = false; // tracks whether the process has exited
-        this.processStderr = false; // tracks whether stderr was written to
-        this.delay = 10000; // 10 seconds
-        this.done = false;
-        this.timeout = null;
-        if (!toolPath) {
-            throw new Error('toolPath must not be empty');
-        }
-        this.options = options;
-        this.toolPath = toolPath;
-        if (options.delay) {
-            this.delay = options.delay;
-        }
-    }
-    CheckComplete() {
-        if (this.done) {
-            return;
-        }
-        if (this.processClosed) {
-            this._setResult();
-        }
-        else if (this.processExited) {
-            this.timeout = setTimeout(ExecState.HandleTimeout, this.delay, this);
-        }
-    }
-    _debug(message) {
-        this.emit('debug', message);
-    }
-    _setResult() {
-        // determine whether there is an error
-        let error;
-        if (this.processExited) {
-            if (this.processError) {
-                error = new Error(`There was an error when attempting to execute the process '${this.toolPath}'. This may indicate the process failed to start. Error: ${this.processError}`);
-            }
-            else if (this.processExitCode !== 0 && !this.options.ignoreReturnCode) {
-                error = new Error(`The process '${this.toolPath}' failed with exit code ${this.processExitCode}`);
-            }
-            else if (this.processStderr && this.options.failOnStdErr) {
-                error = new Error(`The process '${this.toolPath}' failed because one or more lines were written to the STDERR stream`);
-            }
-        }
-        // clear the timeout
-        if (this.timeout) {
-            clearTimeout(this.timeout);
-            this.timeout = null;
-        }
-        this.done = true;
-        this.emit('done', error, this.processExitCode);
-    }
-    static HandleTimeout(state) {
-        if (state.done) {
-            return;
-        }
-        if (!state.processClosed && state.processExited) {
-            const message = `The STDIO streams did not close within ${state.delay /
-                1000} seconds of the exit event from process '${state.toolPath}'. This may indicate a child process inherited the STDIO streams and has not yet exited.`;
-            state._debug(message);
-        }
-        state._setResult();
-    }
-}
-//# sourceMappingURL=toolrunner.js.map
-
-/***/ }),
+/* 658 */,
 /* 659 */,
 /* 660 */,
 /* 661 */,
@@ -69184,7 +69424,7 @@ module.exports = (opts = {}) =>
 
 "use strict";
 
-const EE = __webpack_require__(759)
+const EE = __webpack_require__(614)
 const Stream = __webpack_require__(413)
 const Yallist = __webpack_require__(141)
 const SD = __webpack_require__(304).StringDecoder
@@ -70015,7 +70255,7 @@ const dns_1 = __importDefault(__webpack_require__(881));
 const tls_1 = __importDefault(__webpack_require__(818));
 const url_1 = __importDefault(__webpack_require__(835));
 const debug_1 = __importDefault(__webpack_require__(784));
-const agent_base_1 = __webpack_require__(391);
+const agent_base_1 = __webpack_require__(494);
 const socks_1 = __webpack_require__(493);
 const debug = debug_1.default('socks-proxy-agent');
 function dnsLookup(host) {
@@ -70697,7 +70937,7 @@ const tls_1 = __importDefault(__webpack_require__(818));
 const url_1 = __importDefault(__webpack_require__(835));
 const debug_1 = __importDefault(__webpack_require__(784));
 const once_1 = __importDefault(__webpack_require__(70));
-const agent_base_1 = __webpack_require__(391);
+const agent_base_1 = __webpack_require__(494);
 const debug = debug_1.default('http-proxy-agent');
 function isHTTPS(protocol) {
     return typeof protocol === 'string' ? /^https:?$/i.test(protocol) : false;
@@ -71278,9 +71518,12 @@ module.exports = intersects
 
 /***/ }),
 /* 759 */
-/***/ (function(module) {
+/***/ (function(module, __unusedexports, __webpack_require__) {
 
-module.exports = require("events");
+const SemVer = __webpack_require__(711)
+const minor = (a, loose) => new SemVer(a, loose).minor
+module.exports = minor
+
 
 /***/ }),
 /* 760 */
@@ -73340,273 +73583,7 @@ if (typeof process === 'undefined' || process.type === 'renderer' || process.bro
 
 
 /***/ }),
-/* 785 */
-/***/ (function(module, __unusedexports, __webpack_require__) {
-
-"use strict";
-
-
-function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
-
-function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
-
-const color = __webpack_require__(713);
-
-const Prompt = __webpack_require__(924);
-
-const _require = __webpack_require__(39),
-      erase = _require.erase,
-      cursor = _require.cursor;
-
-const _require2 = __webpack_require__(571),
-      style = _require2.style,
-      clear = _require2.clear,
-      figures = _require2.figures,
-      wrap = _require2.wrap,
-      entriesToDisplay = _require2.entriesToDisplay;
-
-const getVal = (arr, i) => arr[i] && (arr[i].value || arr[i].title || arr[i]);
-
-const getTitle = (arr, i) => arr[i] && (arr[i].title || arr[i].value || arr[i]);
-
-const getIndex = (arr, valOrTitle) => {
-  const index = arr.findIndex(el => el.value === valOrTitle || el.title === valOrTitle);
-  return index > -1 ? index : undefined;
-};
-/**
- * TextPrompt Base Element
- * @param {Object} opts Options
- * @param {String} opts.message Message
- * @param {Array} opts.choices Array of auto-complete choices objects
- * @param {Function} [opts.suggest] Filter function. Defaults to sort by title
- * @param {Number} [opts.limit=10] Max number of results to show
- * @param {Number} [opts.cursor=0] Cursor start position
- * @param {String} [opts.style='default'] Render style
- * @param {String} [opts.fallback] Fallback message - initial to default value
- * @param {String} [opts.initial] Index of the default value
- * @param {Stream} [opts.stdin] The Readable stream to listen to
- * @param {Stream} [opts.stdout] The Writable stream to write readline data to
- * @param {String} [opts.noMatches] The no matches found label
- */
-
-
-class AutocompletePrompt extends Prompt {
-  constructor(opts = {}) {
-    super(opts);
-    this.msg = opts.message;
-    this.suggest = opts.suggest;
-    this.choices = opts.choices;
-    this.initial = typeof opts.initial === 'number' ? opts.initial : getIndex(opts.choices, opts.initial);
-    this.select = this.initial || opts.cursor || 0;
-    this.i18n = {
-      noMatches: opts.noMatches || 'no matches found'
-    };
-    this.fallback = opts.fallback || this.initial;
-    this.suggestions = [];
-    this.input = '';
-    this.limit = opts.limit || 10;
-    this.cursor = 0;
-    this.transform = style.render(opts.style);
-    this.scale = this.transform.scale;
-    this.render = this.render.bind(this);
-    this.complete = this.complete.bind(this);
-    this.clear = clear('');
-    this.complete(this.render);
-    this.render();
-  }
-
-  set fallback(fb) {
-    this._fb = Number.isSafeInteger(parseInt(fb)) ? parseInt(fb) : fb;
-  }
-
-  get fallback() {
-    let choice;
-    if (typeof this._fb === 'number') choice = this.choices[this._fb];else if (typeof this._fb === 'string') choice = {
-      title: this._fb
-    };
-    return choice || this._fb || {
-      title: this.i18n.noMatches
-    };
-  }
-
-  moveSelect(i) {
-    this.select = i;
-    if (this.suggestions.length > 0) this.value = getVal(this.suggestions, i);else this.value = this.fallback.value;
-    this.fire();
-  }
-
-  complete(cb) {
-    var _this = this;
-
-    return _asyncToGenerator(function* () {
-      const p = _this.completing = _this.suggest(_this.input, _this.choices);
-
-      const suggestions = yield p;
-      if (_this.completing !== p) return;
-      _this.suggestions = suggestions.map((s, i, arr) => ({
-        title: getTitle(arr, i),
-        value: getVal(arr, i),
-        description: s.description
-      }));
-      _this.completing = false;
-      const l = Math.max(suggestions.length - 1, 0);
-
-      _this.moveSelect(Math.min(l, _this.select));
-
-      cb && cb();
-    })();
-  }
-
-  reset() {
-    this.input = '';
-    this.complete(() => {
-      this.moveSelect(this.initial !== void 0 ? this.initial : 0);
-      this.render();
-    });
-    this.render();
-  }
-
-  abort() {
-    this.done = this.aborted = true;
-    this.fire();
-    this.render();
-    this.out.write('\n');
-    this.close();
-  }
-
-  submit() {
-    this.done = true;
-    this.aborted = false;
-    this.fire();
-    this.render();
-    this.out.write('\n');
-    this.close();
-  }
-
-  _(c, key) {
-    let s1 = this.input.slice(0, this.cursor);
-    let s2 = this.input.slice(this.cursor);
-    this.input = `${s1}${c}${s2}`;
-    this.cursor = s1.length + 1;
-    this.complete(this.render);
-    this.render();
-  }
-
-  delete() {
-    if (this.cursor === 0) return this.bell();
-    let s1 = this.input.slice(0, this.cursor - 1);
-    let s2 = this.input.slice(this.cursor);
-    this.input = `${s1}${s2}`;
-    this.complete(this.render);
-    this.cursor = this.cursor - 1;
-    this.render();
-  }
-
-  deleteForward() {
-    if (this.cursor * this.scale >= this.rendered.length) return this.bell();
-    let s1 = this.input.slice(0, this.cursor);
-    let s2 = this.input.slice(this.cursor + 1);
-    this.input = `${s1}${s2}`;
-    this.complete(this.render);
-    this.render();
-  }
-
-  first() {
-    this.moveSelect(0);
-    this.render();
-  }
-
-  last() {
-    this.moveSelect(this.suggestions.length - 1);
-    this.render();
-  }
-
-  up() {
-    if (this.select <= 0) return this.bell();
-    this.moveSelect(this.select - 1);
-    this.render();
-  }
-
-  down() {
-    if (this.select >= this.suggestions.length - 1) return this.bell();
-    this.moveSelect(this.select + 1);
-    this.render();
-  }
-
-  next() {
-    if (this.select === this.suggestions.length - 1) {
-      this.moveSelect(0);
-    } else this.moveSelect(this.select + 1);
-
-    this.render();
-  }
-
-  nextPage() {
-    this.moveSelect(Math.min(this.select + this.limit, this.suggestions.length - 1));
-    this.render();
-  }
-
-  prevPage() {
-    this.moveSelect(Math.max(this.select - this.limit, 0));
-    this.render();
-  }
-
-  left() {
-    if (this.cursor <= 0) return this.bell();
-    this.cursor = this.cursor - 1;
-    this.render();
-  }
-
-  right() {
-    if (this.cursor * this.scale >= this.rendered.length) return this.bell();
-    this.cursor = this.cursor + 1;
-    this.render();
-  }
-
-  renderOption(v, hovered, isStart, isEnd) {
-    let desc;
-    let prefix = isStart ? figures.arrowUp : isEnd ? figures.arrowDown : ' ';
-    let title = hovered ? color.cyan().underline(v.title) : v.title;
-    prefix = (hovered ? color.cyan(figures.pointer) + ' ' : '  ') + prefix;
-
-    if (v.description) {
-      desc = ` - ${v.description}`;
-
-      if (prefix.length + title.length + desc.length >= this.out.columns || v.description.split(/\r?\n/).length > 1) {
-        desc = '\n' + wrap(v.description, {
-          margin: 3,
-          width: this.out.columns
-        });
-      }
-    }
-
-    return prefix + ' ' + title + color.gray(desc || '');
-  }
-
-  render() {
-    if (this.closed) return;
-    if (this.firstRender) this.out.write(cursor.hide);else this.out.write(clear(this.outputText));
-    super.render();
-
-    let _entriesToDisplay = entriesToDisplay(this.select, this.choices.length, this.limit),
-        startIndex = _entriesToDisplay.startIndex,
-        endIndex = _entriesToDisplay.endIndex;
-
-    this.outputText = [style.symbol(this.done, this.aborted), color.bold(this.msg), style.delimiter(this.completing), this.done && this.suggestions[this.select] ? this.suggestions[this.select].title : this.rendered = this.transform.render(this.input)].join(' ');
-
-    if (!this.done) {
-      const suggestions = this.suggestions.slice(startIndex, endIndex).map((item, i) => this.renderOption(item, this.select === i + startIndex, i === 0 && startIndex > 0, i + startIndex === endIndex - 1 && endIndex < this.choices.length)).join('\n');
-      this.outputText += `\n` + (suggestions || color.gray(this.fallback.title));
-    }
-
-    this.out.write(erase.line + cursor.to(0) + this.outputText);
-  }
-
-}
-
-module.exports = AutocompletePrompt;
-
-/***/ }),
+/* 785 */,
 /* 786 */
 /***/ (function(module) {
 
@@ -74178,7 +74155,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const exec_1 = __webpack_require__(805);
+const exec_1 = __webpack_require__(986);
 const os_1 = __importDefault(__webpack_require__(87));
 exports.executeOutdated = () => __awaiter(void 0, void 0, void 0, function* () {
     let stdout = '';
@@ -74225,11 +74202,11 @@ exports.formatAsColumns = (packages) => __awaiter(void 0, void 0, void 0, functi
     if (packages.length === 0) {
         return '';
     }
-    const keys = Object.keys(packages[0]).filter((key) => key !== 'homepage');
+    const keys = Object.keys(packages[0]).filter((key) => key !== 'url');
     const headerRow = `| ${keys.join('|')} |`;
     const alignRow = `| ${keys.map(() => ':--').join('|')} |`;
     const itemRows = packages.map((pkg) => exports.getItemRow(pkg));
-    return [headerRow, headerRow, alignRow, ...itemRows].join(os_1.default.EOL);
+    return [headerRow, alignRow, ...itemRows].join(os_1.default.EOL);
 });
 
 
@@ -75173,49 +75150,7 @@ try {
 
 /***/ }),
 /* 804 */,
-/* 805 */
-/***/ (function(__unusedmodule, exports, __webpack_require__) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const tr = __webpack_require__(658);
-/**
- * Exec a command.
- * Output will be streamed to the live console.
- * Returns promise with return code
- *
- * @param     commandLine        command to execute (can include additional args). Must be correctly escaped.
- * @param     args               optional arguments for tool. Escaping is handled by the lib.
- * @param     options            optional exec options.  See ExecOptions
- * @returns   Promise<number>    exit code
- */
-function exec(commandLine, args, options) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const commandArgs = tr.argStringToArray(commandLine);
-        if (commandArgs.length === 0) {
-            throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
-        }
-        // Path to tool to execute should be first arg
-        const toolPath = commandArgs[0];
-        args = commandArgs.slice(1).concat(args || []);
-        const runner = new tr.ToolRunner(toolPath, args, options);
-        return runner.exec();
-    });
-}
-exports.exec = exec;
-//# sourceMappingURL=exec.js.map
-
-/***/ }),
+/* 805 */,
 /* 806 */
 /***/ (function(__unusedmodule, exports) {
 
@@ -75723,13 +75658,46 @@ module.exports = require("tls");
 /* 819 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
-const SemVer = __webpack_require__(711)
-const compareBuild = (a, b, loose) => {
-  const versionA = new SemVer(a, loose)
-  const versionB = new SemVer(b, loose)
-  return versionA.compare(versionB) || versionA.compareBuild(versionB)
+"use strict";
+
+
+
+var loader = __webpack_require__(337);
+var dumper = __webpack_require__(685);
+
+
+function deprecated(name) {
+  return function () {
+    throw new Error('Function ' + name + ' is deprecated and cannot be used.');
+  };
 }
-module.exports = compareBuild
+
+
+module.exports.Type                = __webpack_require__(945);
+module.exports.Schema              = __webpack_require__(43);
+module.exports.FAILSAFE_SCHEMA     = __webpack_require__(581);
+module.exports.JSON_SCHEMA         = __webpack_require__(23);
+module.exports.CORE_SCHEMA         = __webpack_require__(611);
+module.exports.DEFAULT_SAFE_SCHEMA = __webpack_require__(723);
+module.exports.DEFAULT_FULL_SCHEMA = __webpack_require__(910);
+module.exports.load                = loader.load;
+module.exports.loadAll             = loader.loadAll;
+module.exports.safeLoad            = loader.safeLoad;
+module.exports.safeLoadAll         = loader.safeLoadAll;
+module.exports.dump                = dumper.dump;
+module.exports.safeDump            = dumper.safeDump;
+module.exports.YAMLException       = __webpack_require__(556);
+
+// Deprecated schema names from JS-YAML 2.0.x
+module.exports.MINIMAL_SCHEMA = __webpack_require__(581);
+module.exports.SAFE_SCHEMA    = __webpack_require__(723);
+module.exports.DEFAULT_SCHEMA = __webpack_require__(910);
+
+// Deprecated functions from JS-YAML 1.x.x
+module.exports.scan           = deprecated('scan');
+module.exports.parse          = deprecated('parse');
+module.exports.compose        = deprecated('compose');
+module.exports.addConstructor = deprecated('addConstructor');
 
 
 /***/ }),
@@ -75905,7 +75873,7 @@ module.exports = {
 "use strict";
 
 const MiniPass = __webpack_require__(720)
-const EE = __webpack_require__(759).EventEmitter
+const EE = __webpack_require__(614).EventEmitter
 const fs = __webpack_require__(747)
 
 let writev = fs.writev
@@ -78462,10 +78430,268 @@ module.exports = coerce
 /* 850 */
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
-const SemVer = __webpack_require__(711)
-const minor = (a, loose) => new SemVer(a, loose).minor
-module.exports = minor
+"use strict";
 
+
+function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
+
+function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
+
+const color = __webpack_require__(713);
+
+const Prompt = __webpack_require__(924);
+
+const _require = __webpack_require__(39),
+      erase = _require.erase,
+      cursor = _require.cursor;
+
+const _require2 = __webpack_require__(571),
+      style = _require2.style,
+      clear = _require2.clear,
+      figures = _require2.figures,
+      wrap = _require2.wrap,
+      entriesToDisplay = _require2.entriesToDisplay;
+
+const getVal = (arr, i) => arr[i] && (arr[i].value || arr[i].title || arr[i]);
+
+const getTitle = (arr, i) => arr[i] && (arr[i].title || arr[i].value || arr[i]);
+
+const getIndex = (arr, valOrTitle) => {
+  const index = arr.findIndex(el => el.value === valOrTitle || el.title === valOrTitle);
+  return index > -1 ? index : undefined;
+};
+/**
+ * TextPrompt Base Element
+ * @param {Object} opts Options
+ * @param {String} opts.message Message
+ * @param {Array} opts.choices Array of auto-complete choices objects
+ * @param {Function} [opts.suggest] Filter function. Defaults to sort by title
+ * @param {Number} [opts.limit=10] Max number of results to show
+ * @param {Number} [opts.cursor=0] Cursor start position
+ * @param {String} [opts.style='default'] Render style
+ * @param {String} [opts.fallback] Fallback message - initial to default value
+ * @param {String} [opts.initial] Index of the default value
+ * @param {Stream} [opts.stdin] The Readable stream to listen to
+ * @param {Stream} [opts.stdout] The Writable stream to write readline data to
+ * @param {String} [opts.noMatches] The no matches found label
+ */
+
+
+class AutocompletePrompt extends Prompt {
+  constructor(opts = {}) {
+    super(opts);
+    this.msg = opts.message;
+    this.suggest = opts.suggest;
+    this.choices = opts.choices;
+    this.initial = typeof opts.initial === 'number' ? opts.initial : getIndex(opts.choices, opts.initial);
+    this.select = this.initial || opts.cursor || 0;
+    this.i18n = {
+      noMatches: opts.noMatches || 'no matches found'
+    };
+    this.fallback = opts.fallback || this.initial;
+    this.suggestions = [];
+    this.input = '';
+    this.limit = opts.limit || 10;
+    this.cursor = 0;
+    this.transform = style.render(opts.style);
+    this.scale = this.transform.scale;
+    this.render = this.render.bind(this);
+    this.complete = this.complete.bind(this);
+    this.clear = clear('');
+    this.complete(this.render);
+    this.render();
+  }
+
+  set fallback(fb) {
+    this._fb = Number.isSafeInteger(parseInt(fb)) ? parseInt(fb) : fb;
+  }
+
+  get fallback() {
+    let choice;
+    if (typeof this._fb === 'number') choice = this.choices[this._fb];else if (typeof this._fb === 'string') choice = {
+      title: this._fb
+    };
+    return choice || this._fb || {
+      title: this.i18n.noMatches
+    };
+  }
+
+  moveSelect(i) {
+    this.select = i;
+    if (this.suggestions.length > 0) this.value = getVal(this.suggestions, i);else this.value = this.fallback.value;
+    this.fire();
+  }
+
+  complete(cb) {
+    var _this = this;
+
+    return _asyncToGenerator(function* () {
+      const p = _this.completing = _this.suggest(_this.input, _this.choices);
+
+      const suggestions = yield p;
+      if (_this.completing !== p) return;
+      _this.suggestions = suggestions.map((s, i, arr) => ({
+        title: getTitle(arr, i),
+        value: getVal(arr, i),
+        description: s.description
+      }));
+      _this.completing = false;
+      const l = Math.max(suggestions.length - 1, 0);
+
+      _this.moveSelect(Math.min(l, _this.select));
+
+      cb && cb();
+    })();
+  }
+
+  reset() {
+    this.input = '';
+    this.complete(() => {
+      this.moveSelect(this.initial !== void 0 ? this.initial : 0);
+      this.render();
+    });
+    this.render();
+  }
+
+  abort() {
+    this.done = this.aborted = true;
+    this.fire();
+    this.render();
+    this.out.write('\n');
+    this.close();
+  }
+
+  submit() {
+    this.done = true;
+    this.aborted = false;
+    this.fire();
+    this.render();
+    this.out.write('\n');
+    this.close();
+  }
+
+  _(c, key) {
+    let s1 = this.input.slice(0, this.cursor);
+    let s2 = this.input.slice(this.cursor);
+    this.input = `${s1}${c}${s2}`;
+    this.cursor = s1.length + 1;
+    this.complete(this.render);
+    this.render();
+  }
+
+  delete() {
+    if (this.cursor === 0) return this.bell();
+    let s1 = this.input.slice(0, this.cursor - 1);
+    let s2 = this.input.slice(this.cursor);
+    this.input = `${s1}${s2}`;
+    this.complete(this.render);
+    this.cursor = this.cursor - 1;
+    this.render();
+  }
+
+  deleteForward() {
+    if (this.cursor * this.scale >= this.rendered.length) return this.bell();
+    let s1 = this.input.slice(0, this.cursor);
+    let s2 = this.input.slice(this.cursor + 1);
+    this.input = `${s1}${s2}`;
+    this.complete(this.render);
+    this.render();
+  }
+
+  first() {
+    this.moveSelect(0);
+    this.render();
+  }
+
+  last() {
+    this.moveSelect(this.suggestions.length - 1);
+    this.render();
+  }
+
+  up() {
+    if (this.select <= 0) return this.bell();
+    this.moveSelect(this.select - 1);
+    this.render();
+  }
+
+  down() {
+    if (this.select >= this.suggestions.length - 1) return this.bell();
+    this.moveSelect(this.select + 1);
+    this.render();
+  }
+
+  next() {
+    if (this.select === this.suggestions.length - 1) {
+      this.moveSelect(0);
+    } else this.moveSelect(this.select + 1);
+
+    this.render();
+  }
+
+  nextPage() {
+    this.moveSelect(Math.min(this.select + this.limit, this.suggestions.length - 1));
+    this.render();
+  }
+
+  prevPage() {
+    this.moveSelect(Math.max(this.select - this.limit, 0));
+    this.render();
+  }
+
+  left() {
+    if (this.cursor <= 0) return this.bell();
+    this.cursor = this.cursor - 1;
+    this.render();
+  }
+
+  right() {
+    if (this.cursor * this.scale >= this.rendered.length) return this.bell();
+    this.cursor = this.cursor + 1;
+    this.render();
+  }
+
+  renderOption(v, hovered, isStart, isEnd) {
+    let desc;
+    let prefix = isStart ? figures.arrowUp : isEnd ? figures.arrowDown : ' ';
+    let title = hovered ? color.cyan().underline(v.title) : v.title;
+    prefix = (hovered ? color.cyan(figures.pointer) + ' ' : '  ') + prefix;
+
+    if (v.description) {
+      desc = ` - ${v.description}`;
+
+      if (prefix.length + title.length + desc.length >= this.out.columns || v.description.split(/\r?\n/).length > 1) {
+        desc = '\n' + wrap(v.description, {
+          margin: 3,
+          width: this.out.columns
+        });
+      }
+    }
+
+    return prefix + ' ' + title + color.gray(desc || '');
+  }
+
+  render() {
+    if (this.closed) return;
+    if (this.firstRender) this.out.write(cursor.hide);else this.out.write(clear(this.outputText));
+    super.render();
+
+    let _entriesToDisplay = entriesToDisplay(this.select, this.choices.length, this.limit),
+        startIndex = _entriesToDisplay.startIndex,
+        endIndex = _entriesToDisplay.endIndex;
+
+    this.outputText = [style.symbol(this.done, this.aborted), color.bold(this.msg), style.delimiter(this.completing), this.done && this.suggestions[this.select] ? this.suggestions[this.select].title : this.rendered = this.transform.render(this.input)].join(' ');
+
+    if (!this.done) {
+      const suggestions = this.suggestions.slice(startIndex, endIndex).map((item, i) => this.renderOption(item, this.select === i + startIndex, i === 0 && startIndex > 0, i + startIndex === endIndex - 1 && endIndex < this.choices.length)).join('\n');
+      this.outputText += `\n` + (suggestions || color.gray(this.fallback.title));
+    }
+
+    this.out.write(erase.line + cursor.to(0) + this.outputText);
+  }
+
+}
+
+module.exports = AutocompletePrompt;
 
 /***/ }),
 /* 851 */,
@@ -78820,7 +79046,7 @@ const satisfies = __webpack_require__(31)
 const gt = __webpack_require__(821)
 const lt = __webpack_require__(598)
 const lte = __webpack_require__(130)
-const gte = __webpack_require__(614)
+const gte = __webpack_require__(391)
 
 const outside = (version, range, hilo, options) => {
   version = new SemVer(version, options)
@@ -85777,7 +86003,7 @@ const readline = __webpack_require__(58);
 const _require = __webpack_require__(571),
       action = _require.action;
 
-const EventEmitter = __webpack_require__(759);
+const EventEmitter = __webpack_require__(614);
 
 const _require2 = __webpack_require__(39),
       beep = _require2.beep,
@@ -85972,7 +86198,7 @@ module.exports = minVersion
 const warner = __webpack_require__(796)
 const path = __webpack_require__(622)
 const Header = __webpack_require__(232)
-const EE = __webpack_require__(759)
+const EE = __webpack_require__(614)
 const Yallist = __webpack_require__(803)
 const maxMetaEntrySize = 1024 * 1024
 const Entry = __webpack_require__(662)
@@ -86542,7 +86768,7 @@ if (util && util.inspect && util.inspect.custom) {
 /***/ (function(module, __unusedexports, __webpack_require__) {
 
 const Minipass = __webpack_require__(720)
-const EE = __webpack_require__(759)
+const EE = __webpack_require__(614)
 const isStream = s => s && s instanceof EE && (
   typeof s.pipe === 'function' || // readable
   (typeof s.write === 'function' && typeof s.end === 'function') // writable
@@ -89690,270 +89916,46 @@ function rmkidsSync (p, options) {
 
 /***/ }),
 /* 986 */
-/***/ (function(module, __unusedexports, __webpack_require__) {
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
 
-const util = __webpack_require__(299)
+"use strict";
 
-module.exports = function stringify (value, replacer, space) {
-    const stack = []
-    let indent = ''
-    let propertyList
-    let replacerFunc
-    let gap = ''
-    let quote
-
-    if (
-        replacer != null &&
-        typeof replacer === 'object' &&
-        !Array.isArray(replacer)
-    ) {
-        space = replacer.space
-        quote = replacer.quote
-        replacer = replacer.replacer
-    }
-
-    if (typeof replacer === 'function') {
-        replacerFunc = replacer
-    } else if (Array.isArray(replacer)) {
-        propertyList = []
-        for (const v of replacer) {
-            let item
-
-            if (typeof v === 'string') {
-                item = v
-            } else if (
-                typeof v === 'number' ||
-                v instanceof String ||
-                v instanceof Number
-            ) {
-                item = String(v)
-            }
-
-            if (item !== undefined && propertyList.indexOf(item) < 0) {
-                propertyList.push(item)
-            }
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const tr = __webpack_require__(9);
+/**
+ * Exec a command.
+ * Output will be streamed to the live console.
+ * Returns promise with return code
+ *
+ * @param     commandLine        command to execute (can include additional args). Must be correctly escaped.
+ * @param     args               optional arguments for tool. Escaping is handled by the lib.
+ * @param     options            optional exec options.  See ExecOptions
+ * @returns   Promise<number>    exit code
+ */
+function exec(commandLine, args, options) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const commandArgs = tr.argStringToArray(commandLine);
+        if (commandArgs.length === 0) {
+            throw new Error(`Parameter 'commandLine' cannot be null or empty.`);
         }
-    }
-
-    if (space instanceof Number) {
-        space = Number(space)
-    } else if (space instanceof String) {
-        space = String(space)
-    }
-
-    if (typeof space === 'number') {
-        if (space > 0) {
-            space = Math.min(10, Math.floor(space))
-            gap = '          '.substr(0, space)
-        }
-    } else if (typeof space === 'string') {
-        gap = space.substr(0, 10)
-    }
-
-    return serializeProperty('', {'': value})
-
-    function serializeProperty (key, holder) {
-        let value = holder[key]
-        if (value != null) {
-            if (typeof value.toJSON5 === 'function') {
-                value = value.toJSON5(key)
-            } else if (typeof value.toJSON === 'function') {
-                value = value.toJSON(key)
-            }
-        }
-
-        if (replacerFunc) {
-            value = replacerFunc.call(holder, key, value)
-        }
-
-        if (value instanceof Number) {
-            value = Number(value)
-        } else if (value instanceof String) {
-            value = String(value)
-        } else if (value instanceof Boolean) {
-            value = value.valueOf()
-        }
-
-        switch (value) {
-        case null: return 'null'
-        case true: return 'true'
-        case false: return 'false'
-        }
-
-        if (typeof value === 'string') {
-            return quoteString(value, false)
-        }
-
-        if (typeof value === 'number') {
-            return String(value)
-        }
-
-        if (typeof value === 'object') {
-            return Array.isArray(value) ? serializeArray(value) : serializeObject(value)
-        }
-
-        return undefined
-    }
-
-    function quoteString (value) {
-        const quotes = {
-            "'": 0.1,
-            '"': 0.2,
-        }
-
-        const replacements = {
-            "'": "\\'",
-            '"': '\\"',
-            '\\': '\\\\',
-            '\b': '\\b',
-            '\f': '\\f',
-            '\n': '\\n',
-            '\r': '\\r',
-            '\t': '\\t',
-            '\v': '\\v',
-            '\0': '\\0',
-            '\u2028': '\\u2028',
-            '\u2029': '\\u2029',
-        }
-
-        let product = ''
-
-        for (let i = 0; i < value.length; i++) {
-            const c = value[i]
-            switch (c) {
-            case "'":
-            case '"':
-                quotes[c]++
-                product += c
-                continue
-
-            case '\0':
-                if (util.isDigit(value[i + 1])) {
-                    product += '\\x00'
-                    continue
-                }
-            }
-
-            if (replacements[c]) {
-                product += replacements[c]
-                continue
-            }
-
-            if (c < ' ') {
-                let hexString = c.charCodeAt(0).toString(16)
-                product += '\\x' + ('00' + hexString).substring(hexString.length)
-                continue
-            }
-
-            product += c
-        }
-
-        const quoteChar = quote || Object.keys(quotes).reduce((a, b) => (quotes[a] < quotes[b]) ? a : b)
-
-        product = product.replace(new RegExp(quoteChar, 'g'), replacements[quoteChar])
-
-        return quoteChar + product + quoteChar
-    }
-
-    function serializeObject (value) {
-        if (stack.indexOf(value) >= 0) {
-            throw TypeError('Converting circular structure to JSON5')
-        }
-
-        stack.push(value)
-
-        let stepback = indent
-        indent = indent + gap
-
-        let keys = propertyList || Object.keys(value)
-        let partial = []
-        for (const key of keys) {
-            const propertyString = serializeProperty(key, value)
-            if (propertyString !== undefined) {
-                let member = serializeKey(key) + ':'
-                if (gap !== '') {
-                    member += ' '
-                }
-                member += propertyString
-                partial.push(member)
-            }
-        }
-
-        let final
-        if (partial.length === 0) {
-            final = '{}'
-        } else {
-            let properties
-            if (gap === '') {
-                properties = partial.join(',')
-                final = '{' + properties + '}'
-            } else {
-                let separator = ',\n' + indent
-                properties = partial.join(separator)
-                final = '{\n' + indent + properties + ',\n' + stepback + '}'
-            }
-        }
-
-        stack.pop()
-        indent = stepback
-        return final
-    }
-
-    function serializeKey (key) {
-        if (key.length === 0) {
-            return quoteString(key, true)
-        }
-
-        const firstChar = String.fromCodePoint(key.codePointAt(0))
-        if (!util.isIdStartChar(firstChar)) {
-            return quoteString(key, true)
-        }
-
-        for (let i = firstChar.length; i < key.length; i++) {
-            if (!util.isIdContinueChar(String.fromCodePoint(key.codePointAt(i)))) {
-                return quoteString(key, true)
-            }
-        }
-
-        return key
-    }
-
-    function serializeArray (value) {
-        if (stack.indexOf(value) >= 0) {
-            throw TypeError('Converting circular structure to JSON5')
-        }
-
-        stack.push(value)
-
-        let stepback = indent
-        indent = indent + gap
-
-        let partial = []
-        for (let i = 0; i < value.length; i++) {
-            const propertyString = serializeProperty(String(i), value)
-            partial.push((propertyString !== undefined) ? propertyString : 'null')
-        }
-
-        let final
-        if (partial.length === 0) {
-            final = '[]'
-        } else {
-            if (gap === '') {
-                let properties = partial.join(',')
-                final = '[' + properties + ']'
-            } else {
-                let separator = ',\n' + indent
-                let properties = partial.join(separator)
-                final = '[\n' + indent + properties + ',\n' + stepback + ']'
-            }
-        }
-
-        stack.pop()
-        indent = stepback
-        return final
-    }
+        // Path to tool to execute should be first arg
+        const toolPath = commandArgs[0];
+        args = commandArgs.slice(1).concat(args || []);
+        const runner = new tr.ToolRunner(toolPath, args, options);
+        return runner.exec();
+    });
 }
-
+exports.exec = exec;
+//# sourceMappingURL=exec.js.map
 
 /***/ }),
 /* 987 */
