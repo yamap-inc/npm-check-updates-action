@@ -12,6 +12,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Npm install
+      run: npm i
+
     - name: check updates
       id: check_updates
       uses: ./
