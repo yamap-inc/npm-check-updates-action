@@ -2,9 +2,7 @@ name: check updates
 on:
   push:
     branches:
-      - master
-      - development
-      - feature/*
+      - release/*
 jobs:
   execute-action:
     runs-on: ubuntu-latest
