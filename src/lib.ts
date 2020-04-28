@@ -63,7 +63,7 @@ export const hasMajorUpdate = ({ from, to }: Package) => {
 export const getItemRow = (pkg: Package) => {
   let linkableName = getLinkableName(pkg);
   if (hasMajorUpdate(pkg)) {
-    linkableName += ':zap:';
+    linkableName = `:warning: ${linkableName}`;
   }
   return `| ${linkableName} | ${pkg.from} | ${pkg.to} |`;
 };
