@@ -17,10 +17,10 @@ nothing
 - whether new version available or not
 - the result must be `yes` or `no`
 
-## `formatted_as_json`
+### `formatted_as_json`
 
 - new version information as json
 
-## `formatted_as_columns`
+### `formatted_as_columns`
 
 - new version information as formatted with column style for markdown table
