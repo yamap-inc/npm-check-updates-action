@@ -49,4 +49,4 @@ jobs:
           if_mention: always
           icon_emoji: ':octocat:'
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_FOR_PACKAGE_UPDATE }}
-        if: always
+        if: always()
