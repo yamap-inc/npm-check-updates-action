@@ -42,10 +42,10 @@ jobs:
           status: ${{ job.status }}
           fields: repo
           text: |
-            *Pull Request created (for minor update)*
+            *Pull Request created*
             URL: https://github.com/${{ github.repository }}/pull/${{ steps.cpr.outputs.pr_number }}
           author_name: ${{ github.actor }}
-          username: 'アップデートおじさん'
+          username: 'npm アップデートおじさん'
           icon_emoji: ':octocat:'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_FOR_TEST }}
