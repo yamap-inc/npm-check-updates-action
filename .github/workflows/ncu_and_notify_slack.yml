@@ -1,4 +1,4 @@
-name: "package-update"
+name: package-update
 on:
   pull_request:
   push:
@@ -46,7 +46,6 @@ jobs:
             URL: https://github.com/${{ github.repository }}/pull/${{ steps.cpr.outputs.pr_number }}
           author_name: ${{ github.actor }}
           username: 'アップデートおじさん'
-          if_mention: always
           icon_emoji: ':octocat:'
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_TO_TEST }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         if: always()
