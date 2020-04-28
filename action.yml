@@ -1,6 +1,5 @@
-name: ncu action
+name: Npm check updates action
 description: npm package update action using ncu
-author: SotaSuzuki
 outputs:
   has_update:
     description: whether update available or not
