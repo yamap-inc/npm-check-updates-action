@@ -8,7 +8,11 @@ This action is to update npm package dependencies even major update using ncu.
 
 ## Inputs
 
-nothing
+### `package_manager`
+
+- which package manager you are using in the project
+- default: `npm`
+- available values are: `npm` and `yarn`
 
 ## Outputs
 

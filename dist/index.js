@@ -1176,7 +1176,7 @@ function wrappy (fn, cb) {
 /* 12 */
 /***/ (function(module) {
 
-module.exports = {"_args":[["pacote@11.1.4","/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action"]],"_from":"pacote@11.1.4","_id":"pacote@11.1.4","_inBundle":false,"_integrity":"sha512-eUGJvSSpWFZKn3z8gig/HgnBmUl6gIWByIIaHzSyEr3tOWX0w8tFEADXtpu8HGv5E0ShCeTP6enRq8iHKCHSvw==","_location":"/pacote","_phantomChildren":{"glob":"7.1.6","isexe":"2.0.0"},"_requested":{"type":"version","registry":true,"raw":"pacote@11.1.4","name":"pacote","escapedName":"pacote","rawSpec":"11.1.4","saveSpec":null,"fetchSpec":"11.1.4"},"_requiredBy":["/npm-check-updates"],"_resolved":"https://registry.npmjs.org/pacote/-/pacote-11.1.4.tgz","_spec":"11.1.4","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action","author":{"name":"Isaac Z. Schlueter","email":"i@izs.me","url":"https://izs.me"},"bin":{"pacote":"lib/bin.js"},"bugs":{"url":"https://github.com/npm/pacote/issues"},"dependencies":{"@npmcli/git":"^2.0.1","@npmcli/installed-package-contents":"^1.0.5","@npmcli/promise-spawn":"^1.1.0","cacache":"^15.0.0","chownr":"^1.1.4","fs-minipass":"^2.1.0","infer-owner":"^1.0.4","lru-cache":"^5.1.1","minipass":"^3.0.1","minipass-fetch":"^1.2.1","mkdirp":"^1.0.3","npm-package-arg":"^8.0.1","npm-packlist":"^2.1.0","npm-pick-manifest":"^6.0.0","npm-registry-fetch":"^8.0.0","promise-inflight":"^1.0.1","promise-retry":"^1.1.1","read-package-json-fast":"^1.1.3","rimraf":"^2.7.1","semver":"^7.1.3","ssri":"^8.0.0","tar":"^6.0.1","which":"^2.0.2"},"description":"JavaScript package downloader","devDependencies":{"mutate-fs":"^2.1.1","npm-registry-mock":"^1.3.1","require-inject":"^1.4.4","tap":"^14.10.6"},"engines":{"node":">=10"},"files":["lib/**/*.js"],"homepage":"https://github.com/npm/pacote#readme","keywords":["packages","npm","git"],"license":"ISC","main":"lib/index.js","name":"pacote","repository":{"type":"git","url":"git+ssh://git@github.com/npm/pacote.git"},"scripts":{"postpublish":"git push origin --follow-tags","postversion":"npm publish","preversion":"npm test","snap":"tap","test":"tap"},"tap":{"timeout":300,"check-coverage":true,"coverage-map":"map.js","esm":false},"version":"11.1.4"};
+module.exports = {"_args":[["pacote@11.1.4","/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action"]],"_from":"pacote@11.1.4","_id":"pacote@11.1.4","_inBundle":false,"_integrity":"sha512-eUGJvSSpWFZKn3z8gig/HgnBmUl6gIWByIIaHzSyEr3tOWX0w8tFEADXtpu8HGv5E0ShCeTP6enRq8iHKCHSvw==","_location":"/pacote","_phantomChildren":{"glob":"7.1.6","isexe":"2.0.0"},"_requested":{"type":"version","registry":true,"raw":"pacote@11.1.4","name":"pacote","escapedName":"pacote","rawSpec":"11.1.4","saveSpec":null,"fetchSpec":"11.1.4"},"_requiredBy":["/npm-check-updates"],"_resolved":"https://registry.npmjs.org/pacote/-/pacote-11.1.4.tgz","_spec":"11.1.4","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action","author":{"name":"Isaac Z. Schlueter","email":"i@izs.me","url":"https://izs.me"},"bin":{"pacote":"lib/bin.js"},"bugs":{"url":"https://github.com/npm/pacote/issues"},"dependencies":{"@npmcli/git":"^2.0.1","@npmcli/installed-package-contents":"^1.0.5","@npmcli/promise-spawn":"^1.1.0","cacache":"^15.0.0","chownr":"^1.1.4","fs-minipass":"^2.1.0","infer-owner":"^1.0.4","lru-cache":"^5.1.1","minipass":"^3.0.1","minipass-fetch":"^1.2.1","mkdirp":"^1.0.3","npm-package-arg":"^8.0.1","npm-packlist":"^2.1.0","npm-pick-manifest":"^6.0.0","npm-registry-fetch":"^8.0.0","promise-inflight":"^1.0.1","promise-retry":"^1.1.1","read-package-json-fast":"^1.1.3","rimraf":"^2.7.1","semver":"^7.1.3","ssri":"^8.0.0","tar":"^6.0.1","which":"^2.0.2"},"description":"JavaScript package downloader","devDependencies":{"mutate-fs":"^2.1.1","npm-registry-mock":"^1.3.1","require-inject":"^1.4.4","tap":"^14.10.6"},"engines":{"node":">=10"},"files":["lib/**/*.js"],"homepage":"https://github.com/npm/pacote#readme","keywords":["packages","npm","git"],"license":"ISC","main":"lib/index.js","name":"pacote","repository":{"type":"git","url":"git+ssh://git@github.com/npm/pacote.git"},"scripts":{"postpublish":"git push origin --follow-tags","postversion":"npm publish","preversion":"npm test","snap":"tap","test":"tap"},"tap":{"timeout":300,"check-coverage":true,"coverage-map":"map.js","esm":false},"version":"11.1.4"};
 
 /***/ }),
 /* 13 */,
@@ -17577,7 +17577,7 @@ module.exports = TogglePrompt;
 /* 237 */
 /***/ (function(module) {
 
-module.exports = {"_args":[["make-fetch-happen@8.0.4","/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action"]],"_from":"make-fetch-happen@8.0.4","_id":"make-fetch-happen@8.0.4","_inBundle":false,"_integrity":"sha512-hIFoqGq1db0QMiy/Atr/pI1Rs4rDV+ZdGSey2SQyF3KK3u1z4aj9mS5UdNnZkdQpA+H3pGn0J3KlEwsi2x4EqA==","_location":"/make-fetch-happen","_phantomChildren":{},"_requested":{"type":"version","registry":true,"raw":"make-fetch-happen@8.0.4","name":"make-fetch-happen","escapedName":"make-fetch-happen","rawSpec":"8.0.4","saveSpec":null,"fetchSpec":"8.0.4"},"_requiredBy":["/npm-registry-fetch"],"_resolved":"https://registry.npmjs.org/make-fetch-happen/-/make-fetch-happen-8.0.4.tgz","_spec":"8.0.4","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action","author":{"name":"Kat Marchán","email":"kzm@zkat.tech"},"bugs":{"url":"https://github.com/npm/make-fetch-happen/issues"},"dependencies":{"agentkeepalive":"^4.1.0","cacache":"^15.0.0","http-cache-semantics":"^4.0.4","http-proxy-agent":"^4.0.1","https-proxy-agent":"^5.0.0","is-lambda":"^1.0.1","lru-cache":"^5.1.1","minipass":"^3.0.0","minipass-collect":"^1.0.2","minipass-fetch":"^1.1.2","minipass-flush":"^1.0.5","minipass-pipeline":"^1.2.2","promise-retry":"^1.1.1","socks-proxy-agent":"^5.0.0","ssri":"^8.0.0"},"description":"Opinionated, caching, retrying fetch client","devDependencies":{"mkdirp":"^1.0.3","nock":"^11.9.1","npmlog":"^4.1.2","require-inject":"^1.4.2","rimraf":"^2.7.1","safe-buffer":"^5.2.0","standard":"^14.3.1","standard-version":"^7.1.0","tacks":"^1.2.6","tap":"^14.10.6"},"engines":{"node":">= 10"},"files":["*.js","lib","utils"],"homepage":"https://github.com/npm/make-fetch-happen#readme","keywords":["http","request","fetch","mean girls","caching","cache","subresource integrity"],"license":"ISC","main":"index.js","name":"make-fetch-happen","repository":{"type":"git","url":"git+https://github.com/npm/make-fetch-happen.git"},"scripts":{"lint":"standard","posttest":"npm run lint","postversion":"npm publish","prepublishOnly":"git push --follow-tags","preversion":"npm t","test":"tap test/*.js"},"version":"8.0.4"};
+module.exports = {"_args":[["make-fetch-happen@8.0.4","/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action"]],"_from":"make-fetch-happen@8.0.4","_id":"make-fetch-happen@8.0.4","_inBundle":false,"_integrity":"sha512-hIFoqGq1db0QMiy/Atr/pI1Rs4rDV+ZdGSey2SQyF3KK3u1z4aj9mS5UdNnZkdQpA+H3pGn0J3KlEwsi2x4EqA==","_location":"/make-fetch-happen","_phantomChildren":{},"_requested":{"type":"version","registry":true,"raw":"make-fetch-happen@8.0.4","name":"make-fetch-happen","escapedName":"make-fetch-happen","rawSpec":"8.0.4","saveSpec":null,"fetchSpec":"8.0.4"},"_requiredBy":["/npm-registry-fetch"],"_resolved":"https://registry.npmjs.org/make-fetch-happen/-/make-fetch-happen-8.0.4.tgz","_spec":"8.0.4","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action","author":{"name":"Kat Marchán","email":"kzm@zkat.tech"},"bugs":{"url":"https://github.com/npm/make-fetch-happen/issues"},"dependencies":{"agentkeepalive":"^4.1.0","cacache":"^15.0.0","http-cache-semantics":"^4.0.4","http-proxy-agent":"^4.0.1","https-proxy-agent":"^5.0.0","is-lambda":"^1.0.1","lru-cache":"^5.1.1","minipass":"^3.0.0","minipass-collect":"^1.0.2","minipass-fetch":"^1.1.2","minipass-flush":"^1.0.5","minipass-pipeline":"^1.2.2","promise-retry":"^1.1.1","socks-proxy-agent":"^5.0.0","ssri":"^8.0.0"},"description":"Opinionated, caching, retrying fetch client","devDependencies":{"mkdirp":"^1.0.3","nock":"^11.9.1","npmlog":"^4.1.2","require-inject":"^1.4.2","rimraf":"^2.7.1","safe-buffer":"^5.2.0","standard":"^14.3.1","standard-version":"^7.1.0","tacks":"^1.2.6","tap":"^14.10.6"},"engines":{"node":">= 10"},"files":["*.js","lib","utils"],"homepage":"https://github.com/npm/make-fetch-happen#readme","keywords":["http","request","fetch","mean girls","caching","cache","subresource integrity"],"license":"ISC","main":"index.js","name":"make-fetch-happen","repository":{"type":"git","url":"git+https://github.com/npm/make-fetch-happen.git"},"scripts":{"lint":"standard","posttest":"npm run lint","postversion":"npm publish","prepublishOnly":"git push --follow-tags","preversion":"npm t","test":"tap test/*.js"},"version":"8.0.4"};
 
 /***/ }),
 /* 238 */
@@ -23966,11 +23966,20 @@ const lib_1 = __webpack_require__(795);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            yield io.which('npm', true);
-            const outdatedPackages = yield lib_1.executeOutdated();
+            const packageManager = (core.getInput('package_manager', { required: false }) || 'npm');
+            if (packageManager === 'yarn') {
+                yield exec_1.exec('npm install -g yarn');
+            }
+            yield io.which(packageManager, true);
+            const outdatedPackages = yield lib_1.executeOutdated({ packageManager });
             const packages = yield lib_1.convertToPackages(outdatedPackages);
-            yield npm_check_updates_1.default.run({ packageManager: 'npm', upgrade: true });
-            yield exec_1.exec('npm install');
+            yield npm_check_updates_1.default.run({ packageManager, upgrade: true });
+            if (packageManager === 'npm') {
+                yield exec_1.exec('npm install');
+            }
+            else if (packageManager === 'yarn') {
+                yield exec_1.exec('yarn install');
+            }
             core.setOutput('has_update', packages.length > 0 ? 'yes' : 'no');
             core.setOutput('formatted_as_json', JSON.stringify(packages));
             core.setOutput('formatted_as_columns', yield lib_1.formatAsColumns(packages));
@@ -33608,7 +33617,7 @@ module.exports = core;
 /* 444 */
 /***/ (function(module) {
 
-module.exports = {"_args":[["npm-registry-fetch@8.0.0","/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action"]],"_from":"npm-registry-fetch@8.0.0","_id":"npm-registry-fetch@8.0.0","_inBundle":false,"_integrity":"sha512-975WwLvZjX97y9UWWQ8nAyr7bw02s9xKPHqvEm5T900LQsB1HXb8Gb9ebYtCBLSX+K8gSOrO5KS/9yV/naLZmQ==","_location":"/npm-registry-fetch","_phantomChildren":{},"_requested":{"type":"version","registry":true,"raw":"npm-registry-fetch@8.0.0","name":"npm-registry-fetch","escapedName":"npm-registry-fetch","rawSpec":"8.0.0","saveSpec":null,"fetchSpec":"8.0.0"},"_requiredBy":["/pacote"],"_resolved":"https://registry.npmjs.org/npm-registry-fetch/-/npm-registry-fetch-8.0.0.tgz","_spec":"8.0.0","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action","author":{"name":"Kat Marchán","email":"kzm@sykosomatic.org"},"bugs":{"url":"https://github.com/npm/registry-fetch/issues"},"dependencies":{"@npmcli/ci-detect":"^1.0.0","lru-cache":"^5.1.1","make-fetch-happen":"^8.0.2","minipass":"^3.0.0","minipass-fetch":"^1.1.2","minipass-json-stream":"^1.0.1","minizlib":"^2.0.0","npm-package-arg":"^8.0.0"},"description":"Fetch-based http client for use with npm registry APIs","devDependencies":{"cacache":"^15.0.0","mkdirp":"^0.5.1","nock":"^11.7.0","npmlog":"^4.1.2","require-inject":"^1.4.4","rimraf":"^2.6.2","ssri":"^8.0.0","standard":"^14.3.1","standard-version":"^7.0.1","tap":"^14.10.4"},"engines":{"node":">=10"},"files":["*.js","lib"],"homepage":"https://github.com/npm/registry-fetch#readme","keywords":["npm","registry","fetch"],"license":"ISC","main":"index.js","name":"npm-registry-fetch","repository":{"type":"git","url":"git+https://github.com/npm/registry-fetch.git"},"scripts":{"postrelease":"npm publish","posttest":"standard","prepublishOnly":"git push --follow-tags","prerelease":"npm t","release":"standard-version -s","test":"tap"},"tap":{"check-coverage":true,"test-ignore":"test[\\\\/](util|cache)[\\\\/]"},"version":"8.0.0"};
+module.exports = {"_args":[["npm-registry-fetch@8.0.0","/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action"]],"_from":"npm-registry-fetch@8.0.0","_id":"npm-registry-fetch@8.0.0","_inBundle":false,"_integrity":"sha512-975WwLvZjX97y9UWWQ8nAyr7bw02s9xKPHqvEm5T900LQsB1HXb8Gb9ebYtCBLSX+K8gSOrO5KS/9yV/naLZmQ==","_location":"/npm-registry-fetch","_phantomChildren":{},"_requested":{"type":"version","registry":true,"raw":"npm-registry-fetch@8.0.0","name":"npm-registry-fetch","escapedName":"npm-registry-fetch","rawSpec":"8.0.0","saveSpec":null,"fetchSpec":"8.0.0"},"_requiredBy":["/pacote"],"_resolved":"https://registry.npmjs.org/npm-registry-fetch/-/npm-registry-fetch-8.0.0.tgz","_spec":"8.0.0","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action","author":{"name":"Kat Marchán","email":"kzm@sykosomatic.org"},"bugs":{"url":"https://github.com/npm/registry-fetch/issues"},"dependencies":{"@npmcli/ci-detect":"^1.0.0","lru-cache":"^5.1.1","make-fetch-happen":"^8.0.2","minipass":"^3.0.0","minipass-fetch":"^1.1.2","minipass-json-stream":"^1.0.1","minizlib":"^2.0.0","npm-package-arg":"^8.0.0"},"description":"Fetch-based http client for use with npm registry APIs","devDependencies":{"cacache":"^15.0.0","mkdirp":"^0.5.1","nock":"^11.7.0","npmlog":"^4.1.2","require-inject":"^1.4.4","rimraf":"^2.6.2","ssri":"^8.0.0","standard":"^14.3.1","standard-version":"^7.0.1","tap":"^14.10.4"},"engines":{"node":">=10"},"files":["*.js","lib"],"homepage":"https://github.com/npm/registry-fetch#readme","keywords":["npm","registry","fetch"],"license":"ISC","main":"index.js","name":"npm-registry-fetch","repository":{"type":"git","url":"git+https://github.com/npm/registry-fetch.git"},"scripts":{"postrelease":"npm publish","posttest":"standard","prepublishOnly":"git push --follow-tags","prerelease":"npm t","release":"standard-version -s","test":"tap"},"tap":{"check-coverage":true,"test-ignore":"test[\\\\/](util|cache)[\\\\/]"},"version":"8.0.0"};
 
 /***/ }),
 /* 445 */
@@ -37602,7 +37611,7 @@ module.exports.default = pLimit;
 /* 525 */
 /***/ (function(module) {
 
-module.exports = {"_args":[["cacache@15.0.0","/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action"]],"_from":"cacache@15.0.0","_id":"cacache@15.0.0","_inBundle":false,"_integrity":"sha512-L0JpXHhplbJSiDGzyJJnJCTL7er7NzbBgxzVqLswEb4bO91Zbv17OUMuUeu/q0ZwKn3V+1HM4wb9tO4eVE/K8g==","_location":"/cacache","_phantomChildren":{"aggregate-error":"3.0.1","glob":"7.1.6"},"_requested":{"type":"version","registry":true,"raw":"cacache@15.0.0","name":"cacache","escapedName":"cacache","rawSpec":"15.0.0","saveSpec":null,"fetchSpec":"15.0.0"},"_requiredBy":["/make-fetch-happen","/pacote"],"_resolved":"https://registry.npmjs.org/cacache/-/cacache-15.0.0.tgz","_spec":"15.0.0","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action","author":{"name":"Kat Marchán","email":"kzm@sykosomatic.org"},"bugs":{"url":"https://github.com/npm/cacache/issues"},"cache-version":{"content":"2","index":"5"},"contributors":[{"name":"Charlotte Spencer","email":"charlottelaspencer@gmail.com"},{"name":"Rebecca Turner","email":"me@re-becca.org"}],"dependencies":{"chownr":"^1.1.2","fs-minipass":"^2.0.0","glob":"^7.1.4","infer-owner":"^1.0.4","lru-cache":"^5.1.1","minipass":"^3.1.1","minipass-collect":"^1.0.2","minipass-flush":"^1.0.5","minipass-pipeline":"^1.2.2","mkdirp":"^1.0.3","move-concurrently":"^1.0.1","p-map":"^3.0.0","promise-inflight":"^1.0.1","rimraf":"^2.7.1","ssri":"^8.0.0","tar":"^6.0.1","unique-filename":"^1.1.1"},"description":"Fast, fault-tolerant, cross-platform, disk-based, data-agnostic, content-addressable cache.","devDependencies":{"benchmark":"^2.1.4","chalk":"^2.4.2","require-inject":"^1.4.4","standard":"^14.3.1","standard-version":"^7.1.0","tacks":"^1.3.0","tap":"^14.10.6"},"engines":{"node":">= 10"},"files":["*.js","lib"],"homepage":"https://github.com/npm/cacache#readme","keywords":["cache","caching","content-addressable","sri","sri hash","subresource integrity","cache","storage","store","file store","filesystem","disk cache","disk storage"],"license":"ISC","main":"index.js","name":"cacache","repository":{"type":"git","url":"git+https://github.com/npm/cacache.git"},"scripts":{"benchmarks":"node test/benchmarks","coverage":"tap","lint":"standard","postrelease":"npm publish","posttest":"npm run lint","prepublishOnly":"git push --follow-tags","prerelease":"npm t","release":"standard-version -s","test":"tap","test-docker":"docker run -it --rm --name pacotest -v \"$PWD\":/tmp -w /tmp node:latest npm test"},"tap":{"100":true,"test-regex":"test/[^/]*.js"},"version":"15.0.0"};
+module.exports = {"_args":[["cacache@15.0.0","/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action"]],"_from":"cacache@15.0.0","_id":"cacache@15.0.0","_inBundle":false,"_integrity":"sha512-L0JpXHhplbJSiDGzyJJnJCTL7er7NzbBgxzVqLswEb4bO91Zbv17OUMuUeu/q0ZwKn3V+1HM4wb9tO4eVE/K8g==","_location":"/cacache","_phantomChildren":{"aggregate-error":"3.0.1","glob":"7.1.6"},"_requested":{"type":"version","registry":true,"raw":"cacache@15.0.0","name":"cacache","escapedName":"cacache","rawSpec":"15.0.0","saveSpec":null,"fetchSpec":"15.0.0"},"_requiredBy":["/make-fetch-happen","/pacote"],"_resolved":"https://registry.npmjs.org/cacache/-/cacache-15.0.0.tgz","_spec":"15.0.0","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action","author":{"name":"Kat Marchán","email":"kzm@sykosomatic.org"},"bugs":{"url":"https://github.com/npm/cacache/issues"},"cache-version":{"content":"2","index":"5"},"contributors":[{"name":"Charlotte Spencer","email":"charlottelaspencer@gmail.com"},{"name":"Rebecca Turner","email":"me@re-becca.org"}],"dependencies":{"chownr":"^1.1.2","fs-minipass":"^2.0.0","glob":"^7.1.4","infer-owner":"^1.0.4","lru-cache":"^5.1.1","minipass":"^3.1.1","minipass-collect":"^1.0.2","minipass-flush":"^1.0.5","minipass-pipeline":"^1.2.2","mkdirp":"^1.0.3","move-concurrently":"^1.0.1","p-map":"^3.0.0","promise-inflight":"^1.0.1","rimraf":"^2.7.1","ssri":"^8.0.0","tar":"^6.0.1","unique-filename":"^1.1.1"},"description":"Fast, fault-tolerant, cross-platform, disk-based, data-agnostic, content-addressable cache.","devDependencies":{"benchmark":"^2.1.4","chalk":"^2.4.2","require-inject":"^1.4.4","standard":"^14.3.1","standard-version":"^7.1.0","tacks":"^1.3.0","tap":"^14.10.6"},"engines":{"node":">= 10"},"files":["*.js","lib"],"homepage":"https://github.com/npm/cacache#readme","keywords":["cache","caching","content-addressable","sri","sri hash","subresource integrity","cache","storage","store","file store","filesystem","disk cache","disk storage"],"license":"ISC","main":"index.js","name":"cacache","repository":{"type":"git","url":"git+https://github.com/npm/cacache.git"},"scripts":{"benchmarks":"node test/benchmarks","coverage":"tap","lint":"standard","postrelease":"npm publish","posttest":"npm run lint","prepublishOnly":"git push --follow-tags","prerelease":"npm t","release":"standard-version -s","test":"tap","test-docker":"docker run -it --rm --name pacotest -v \"$PWD\":/tmp -w /tmp node:latest npm test"},"tap":{"100":true,"test-regex":"test/[^/]*.js"},"version":"15.0.0"};
 
 /***/ }),
 /* 526 */
@@ -74157,7 +74166,51 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const exec_1 = __webpack_require__(986);
 const os_1 = __importDefault(__webpack_require__(87));
-exports.executeOutdated = () => __awaiter(void 0, void 0, void 0, function* () {
+// @see https://github.com/masawada/yarn-outdated-formatter/blob/main/lib/parseYarnOutdatedJSON.js
+exports.parseYarnOutdatedJSON = (jsonString) => {
+    // yarn <= 1.0.2
+    try {
+        const json = JSON.parse(jsonString);
+        return json;
+    }
+    catch (e) { } // eslint-disable-line no-empty
+    // yarn >= 1.2.1
+    // try parsing multiple context json string
+    let tokens = '';
+    for (const token of jsonString.split(os_1.default.EOL)) {
+        tokens += token;
+        try {
+            const json = JSON.parse(tokens);
+            if (json.type === 'table') {
+                return json;
+            }
+            tokens = '';
+        }
+        catch (e) { } // eslint-disable-line no-empty
+    }
+    return null;
+};
+exports.getOutdatedPackagesByNpm = (jsonString) => {
+    const json = JSON.parse(jsonString);
+    return Object.keys(json).map((key) => {
+        const { current, wanted, latest, homepage } = json[key];
+        return { name: key, current, wanted, latest, homepage };
+    });
+};
+exports.getOutdatedPackagesByYarn = (jsonString) => {
+    const json = exports.parseYarnOutdatedJSON(jsonString);
+    if (!json)
+        throw new Error('Failed to parse yarn outdated JSON');
+    delete json.type;
+    delete json.data.head;
+    return json.data.body.map((item) => {
+        const [name, current, wanted, latest, , homepage] = item;
+        return { name, current, wanted, latest, homepage };
+    });
+};
+exports.executeOutdated = (options = {
+    packageManager: 'npm',
+}) => __awaiter(void 0, void 0, void 0, function* () {
     let stdout = '';
     const execOptions = {
         ignoreReturnCode: true,
@@ -74167,16 +74220,23 @@ exports.executeOutdated = () => __awaiter(void 0, void 0, void 0, function* () {
             },
         },
     };
-    const args = ['--long', '--json'];
-    yield exec_1.exec('npm outdated', args, execOptions);
+    if (options.packageManager === 'yarn') {
+        const args = ['--json'];
+        yield exec_1.exec('yarn outdated', args, execOptions);
+    }
+    else {
+        const args = ['--long', '--json'];
+        yield exec_1.exec('npm outdated', args, execOptions);
+    }
     if (stdout.trim().length === 0) {
         return [];
     }
-    const json = JSON.parse(stdout);
-    return Object.keys(json).map((key) => {
-        const { current, wanted, latest, homepage } = json[key];
-        return { name: key, current, wanted, latest, homepage };
-    });
+    if (options.packageManager === 'yarn') {
+        return exports.getOutdatedPackagesByYarn(stdout);
+    }
+    else {
+        return exports.getOutdatedPackagesByNpm(stdout);
+    }
 });
 exports.convertToPackages = (outdatedPackages) => __awaiter(void 0, void 0, void 0, function* () {
     return outdatedPackages.map(({ name, current, latest, homepage }) => {
@@ -84502,7 +84562,7 @@ module.exports.win32 = win32.parse;
 /* 906 */
 /***/ (function(module) {
 
-module.exports = {"_args":[["minipass-fetch@1.2.1","/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action"]],"_from":"minipass-fetch@1.2.1","_id":"minipass-fetch@1.2.1","_inBundle":false,"_integrity":"sha512-ssHt0dkljEDaKmTgQ04DQgx2ag6G2gMPxA5hpcsoeTbfDgRf2fC2gNSRc6kISjD7ckCpHwwQvXxuTBK8402fXg==","_location":"/minipass-fetch","_phantomChildren":{},"_requested":{"type":"version","registry":true,"raw":"minipass-fetch@1.2.1","name":"minipass-fetch","escapedName":"minipass-fetch","rawSpec":"1.2.1","saveSpec":null,"fetchSpec":"1.2.1"},"_requiredBy":["/make-fetch-happen","/npm-registry-fetch","/pacote"],"_resolved":"https://registry.npmjs.org/minipass-fetch/-/minipass-fetch-1.2.1.tgz","_spec":"1.2.1","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/ncu-action","bugs":{"url":"https://github.com/npm/minipass-fetch/issues"},"dependencies":{"encoding":"^0.1.12","minipass":"^3.1.0","minipass-pipeline":"^1.2.2","minipass-sized":"^1.0.3","minizlib":"^2.0.0"},"description":"An implementation of window.fetch in Node.js using Minipass streams","devDependencies":{"@ungap/url-search-params":"^0.1.2","abort-controller":"^3.0.0","abortcontroller-polyfill":"^1.3.0","form-data":"^2.5.1","parted":"^0.1.1","string-to-arraybuffer":"^1.0.2","tap":"^14.6.9","whatwg-url":"^7.0.0"},"engines":{"node":">=8"},"files":["index.js","lib/*.js"],"homepage":"https://github.com/npm/minipass-fetch#readme","keywords":["fetch","minipass","node-fetch","window.fetch"],"license":"MIT","main":"lib/index.js","name":"minipass-fetch","optionalDependencies":{"encoding":"^0.1.12"},"repository":{"type":"git","url":"git+https://github.com/npm/minipass-fetch.git"},"scripts":{"postpublish":"git push origin --follow-tags","postversion":"npm publish","preversion":"npm test","snap":"tap","test":"tap"},"tap":{"coverage-map":"map.js","check-coverage":true},"version":"1.2.1"};
+module.exports = {"_args":[["minipass-fetch@1.2.1","/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action"]],"_from":"minipass-fetch@1.2.1","_id":"minipass-fetch@1.2.1","_inBundle":false,"_integrity":"sha512-ssHt0dkljEDaKmTgQ04DQgx2ag6G2gMPxA5hpcsoeTbfDgRf2fC2gNSRc6kISjD7ckCpHwwQvXxuTBK8402fXg==","_location":"/minipass-fetch","_phantomChildren":{},"_requested":{"type":"version","registry":true,"raw":"minipass-fetch@1.2.1","name":"minipass-fetch","escapedName":"minipass-fetch","rawSpec":"1.2.1","saveSpec":null,"fetchSpec":"1.2.1"},"_requiredBy":["/make-fetch-happen","/npm-registry-fetch","/pacote"],"_resolved":"https://registry.npmjs.org/minipass-fetch/-/minipass-fetch-1.2.1.tgz","_spec":"1.2.1","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action","bugs":{"url":"https://github.com/npm/minipass-fetch/issues"},"dependencies":{"encoding":"^0.1.12","minipass":"^3.1.0","minipass-pipeline":"^1.2.2","minipass-sized":"^1.0.3","minizlib":"^2.0.0"},"description":"An implementation of window.fetch in Node.js using Minipass streams","devDependencies":{"@ungap/url-search-params":"^0.1.2","abort-controller":"^3.0.0","abortcontroller-polyfill":"^1.3.0","form-data":"^2.5.1","parted":"^0.1.1","string-to-arraybuffer":"^1.0.2","tap":"^14.6.9","whatwg-url":"^7.0.0"},"engines":{"node":">=8"},"files":["index.js","lib/*.js"],"homepage":"https://github.com/npm/minipass-fetch#readme","keywords":["fetch","minipass","node-fetch","window.fetch"],"license":"MIT","main":"lib/index.js","name":"minipass-fetch","optionalDependencies":{"encoding":"^0.1.12"},"repository":{"type":"git","url":"git+https://github.com/npm/minipass-fetch.git"},"scripts":{"postpublish":"git push origin --follow-tags","postversion":"npm publish","preversion":"npm test","snap":"tap","test":"tap"},"tap":{"coverage-map":"map.js","check-coverage":true},"version":"1.2.1"};
 
 /***/ }),
 /* 907 */,
