@@ -1,3 +1,4 @@
+import * as core from '@actions/core';
 import { exec } from '@actions/exec';
 import os from 'os';
 
@@ -16,10 +17,64 @@ export interface Package {
   url: string;
 }
 
-export const executeOutdated = async () => {
+// @see https://github.com/masawada/yarn-outdated-formatter/blob/main/lib/parseYarnOutdatedJSON.js
+export const parseYarnOutdatedJSON = (jsonString: string) => {
+  // yarn <= 1.0.2
+  try {
+    const json = JSON.parse(jsonString);
+    return json;
+  } catch (e) {} // eslint-disable-line no-empty
+
+  // yarn >= 1.2.1
+  // try parsing multiple context json string
+  let tokens = '';
+
+  for (const token of jsonString.split(os.EOL)) {
+    tokens += token;
+
+    try {
+      const json = JSON.parse(tokens);
+      if (json.type === 'table') {
+        return json;
+      }
+      tokens = '';
+    } catch (e) {} // eslint-disable-line no-empty
+  }
+
+  return null;
+};
+
+export const getOutdatedPackagesByNpm = (jsonString: string) => {
+  const json = JSON.parse(jsonString);
+  return Object.keys(json).map((key) => {
+    const { current, wanted, latest, homepage } = json[key];
+    return { name: key, current, wanted, latest, homepage };
+  });
+};
+
+export const getOutdatedPackagesByYarn = (jsonString: string) => {
+  const json = parseYarnOutdatedJSON(jsonString);
+  if (!json) throw new Error('Failed to parse yarn outdated JSON');
+  delete json.type;
+  delete json.data.head;
+  return json.data.body.map((item: any) => {
+    const [name, current, wanted, latest, , homepage] = item;
+    return { name, current, wanted, latest, homepage };
+  });
+};
+
+export const executeOutdated = async (
+  options: {
+    packageManager: 'yarn' | 'npm';
+  } = {
+    packageManager: 'npm',
+  }
+) => {
   let stdout = '';
 
-  const execOptions: object = {
+  const workingDir = core.getInput('path');
+  const execOptions: Record<string, any> = {
+    cwd: workingDir || './',
     ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {
@@ -27,19 +82,25 @@ export const executeOutdated = async () => {
       },
     },
   };
-  const args = ['--long', '--json'];
 
-  await exec('npm outdated', args, execOptions);
+  if (options.packageManager === 'yarn') {
+    const args = ['--json'];
+    await exec('yarn outdated', args, execOptions);
+  } else {
+    const args = ['--long', '--json'];
+    await exec('npm outdated', args, execOptions);
+  }
 
   if (stdout.trim().length === 0) {
     return [];
   }
 
-  const json = JSON.parse(stdout);
-  return Object.keys(json).map((key) => {
-    const { current, wanted, latest, homepage } = json[key];
-    return { name: key, current, wanted, latest, homepage };
-  });
+  if (options.packageManager === 'yarn') {
+    const packages = getOutdatedPackagesByYarn(stdout);
+    return packages;
+  } else {
+    return getOutdatedPackagesByNpm(stdout);
+  }
 };
 
 export const convertToPackages = async (

@@ -1,4 +1,4 @@
-name: package-update
+name: ncu and notify slack
 on:
   pull_request:
   push:
@@ -6,7 +6,7 @@ on:
       - master
 
 jobs:
-  pacage-update:
+  ncu-and-notify-slack:
     runs-on: ubuntu-latest
     steps:
       - name: Get current date
@@ -23,12 +23,13 @@ jobs:
 
       - name: Create pull request
         id: cpr
-        uses: peter-evans/create-pull-request@v2
+        uses: peter-evans/create-pull-request@v3
         with:
           token: ${{ github.token }}
           title: Update npm packages
           commit-message: Update npm packages
           branch: package-update/${{ steps.current_date.outputs.date }}
+          base: master
           labels: 'enhancement'
           body: |
             # Updated packages
@@ -43,7 +44,7 @@ jobs:
           fields: repo
           text: |
             *Pull Request created*
-            URL: https://github.com/${{ github.repository }}/pull/${{ steps.cpr.outputs.pr_number }}
+            URL: ${{ steps.cpr.outputs.pull-request-url }}
           author_name: ${{ github.actor }}
           username: 'npm アップデートおじさん'
           icon_emoji: ':octocat:'
