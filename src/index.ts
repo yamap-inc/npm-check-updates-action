@@ -7,13 +7,23 @@ import { executeOutdated, convertToPackages, formatAsColumns } from './lib';
 
 async function run() {
   try {
-    await io.which('npm', true);
+    const packageManager = (core.getInput('package_manager', {
+      required: false,
+    }) || 'npm') as 'yarn' | 'npm';
+    if (packageManager === 'yarn') {
+      await exec('npm install -g yarn');
+    }
+    await io.which(packageManager, true);
 
-    const outdatedPackages = await executeOutdated();
+    const outdatedPackages = await executeOutdated({ packageManager });
     const packages = await convertToPackages(outdatedPackages);
 
-    await ncu.run({ packageManager: 'npm', upgrade: true });
-    await exec('npm install');
+    await ncu.run({ packageManager, upgrade: true });
+    if (packageManager === 'npm') {
+      await exec('npm install');
+    } else if (packageManager === 'yarn') {
+      await exec('yarn install');
+    }
 
     core.setOutput('has_update', packages.length > 0 ? 'yes' : 'no');
     core.setOutput('formatted_as_json', JSON.stringify(packages));

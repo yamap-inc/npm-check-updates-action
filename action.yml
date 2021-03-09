@@ -1,5 +1,10 @@
 name: Npm check updates action
 description: npm package update action using ncu
+inputs:
+  package_manager:
+    description: which package manager you want to use
+    required: false
+    default: 'npm'
 outputs:
   has_update:
     description: whether update available or not
