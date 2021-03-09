@@ -10,9 +10,6 @@ async function run() {
     const packageManager = (core.getInput('package_manager', {
       required: false,
     }) || 'npm') as 'yarn' | 'npm';
-    if (packageManager === 'yarn') {
-      await exec('npm install -g yarn');
-    }
     await io.which(packageManager, true);
 
     const outdatedPackages = await executeOutdated({ packageManager });
