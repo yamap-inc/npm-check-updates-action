@@ -23966,10 +23966,9 @@ const lib_1 = __webpack_require__(795);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const packageManager = (core.getInput('package_manager', { required: false }) || 'npm');
-            if (packageManager === 'yarn') {
-                yield exec_1.exec('npm install -g yarn');
-            }
+            const packageManager = (core.getInput('package_manager', {
+                required: false,
+            }) || 'npm');
             yield io.which(packageManager, true);
             const outdatedPackages = yield lib_1.executeOutdated({ packageManager });
             const packages = yield lib_1.convertToPackages(outdatedPackages);
