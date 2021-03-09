@@ -7,6 +7,9 @@ import { executeOutdated, convertToPackages, formatAsColumns } from './lib';
 
 async function run() {
   try {
+    const path = core.getInput('path');
+    if (path) await exec(`cd ${path}`);
+
     const packageManager = (core.getInput('package_manager', {
       required: false,
     }) || 'npm') as 'yarn' | 'npm';
