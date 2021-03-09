@@ -23966,6 +23966,9 @@ const lib_1 = __webpack_require__(795);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const path = core.getInput('path');
+            if (path)
+                yield exec_1.exec(`cd ${path}`);
             const packageManager = (core.getInput('package_manager', {
                 required: false,
             }) || 'npm');
