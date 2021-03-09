@@ -1,6 +1,9 @@
 name: Npm check updates action
 description: npm package update action using ncu
 inputs:
+  path:
+    description: path to working directory
+    required: false
   package_manager:
     description: which package manager you want to use
     required: false
