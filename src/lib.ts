@@ -1,3 +1,4 @@
+import * as core from '@actions/core';
 import { exec } from '@actions/exec';
 import os from 'os';
 
@@ -71,7 +72,9 @@ export const executeOutdated = async (
 ) => {
   let stdout = '';
 
+  const path = core.getInput('path');
   const execOptions: object = {
+    cwd: path,
     ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {

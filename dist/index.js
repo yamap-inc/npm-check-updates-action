@@ -23966,9 +23966,6 @@ const lib_1 = __webpack_require__(795);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const path = core.getInput('path');
-            if (path)
-                yield exec_1.exec(`cd ${path}`);
             const packageManager = (core.getInput('package_manager', {
                 required: false,
             }) || 'npm');
@@ -23980,7 +23977,8 @@ function run() {
                 yield exec_1.exec('npm install');
             }
             else if (packageManager === 'yarn') {
-                yield exec_1.exec('yarn install');
+                const path = core.getInput('path');
+                yield exec_1.exec('yarn install', [], { cwd: path });
             }
             core.setOutput('has_update', packages.length > 0 ? 'yes' : 'no');
             core.setOutput('formatted_as_json', JSON.stringify(packages));
@@ -74162,10 +74160,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const core = __importStar(__webpack_require__(470));
 const exec_1 = __webpack_require__(986);
 const os_1 = __importDefault(__webpack_require__(87));
 // @see https://github.com/masawada/yarn-outdated-formatter/blob/main/lib/parseYarnOutdatedJSON.js
@@ -74214,7 +74220,9 @@ exports.executeOutdated = (options = {
     packageManager: 'npm',
 }) => __awaiter(void 0, void 0, void 0, function* () {
     let stdout = '';
+    const path = core.getInput('path');
     const execOptions = {
+        cwd: path,
         ignoreReturnCode: true,
         listeners: {
             stdout: (data) => {

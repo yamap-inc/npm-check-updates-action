@@ -7,9 +7,6 @@ import { executeOutdated, convertToPackages, formatAsColumns } from './lib';
 
 async function run() {
   try {
-    const path = core.getInput('path');
-    if (path) await exec(`cd ${path}`);
-
     const packageManager = (core.getInput('package_manager', {
       required: false,
     }) || 'npm') as 'yarn' | 'npm';
@@ -22,7 +19,8 @@ async function run() {
     if (packageManager === 'npm') {
       await exec('npm install');
     } else if (packageManager === 'yarn') {
-      await exec('yarn install');
+      const path = core.getInput('path');
+      await exec('yarn install', [], { cwd: path });
     }
 
     core.setOutput('has_update', packages.length > 0 ? 'yes' : 'no');
