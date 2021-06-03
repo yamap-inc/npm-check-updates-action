@@ -17,7 +17,7 @@ async function run() {
 
     console.log('outdated: ', outdatedPackages);
 
-    await ncu.run({ packageManager, upgrade: true });
+    // await ncu.run({ packageManager, upgrade: true });
     if (packageManager === 'npm') {
       await exec('npm install');
     } else if (packageManager === 'yarn') {

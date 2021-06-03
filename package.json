@@ -10,7 +10,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "pack": "ncc build",
-    "all": "npm run lint && npm run format && npm run typecheck && npm run test && npm pack"
+    "all": "npm run lint && npm run format && npm run typecheck && npm run test && npm run pack"
   },
   "repository": {
     "type": "git",

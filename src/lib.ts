@@ -58,7 +58,6 @@ export const getOutdatedPackagesByYarn = (jsonString: string) => {
   delete json.type;
   delete json.data.head;
   return json.data.body.map((item: any) => {
-    console.log('itemp[index]:', item[0]);
     const [name, current, wanted, latest, , homepage] = item;
     return { name, current, wanted, latest, homepage };
   });
@@ -90,13 +89,10 @@ export const executeOutdated = async (
   if (options.packageManager === 'yarn') {
     const args = ['--json'];
     await exec('yarn outdated', args, execOptions);
-    console.log('post yarn outdated');
   } else {
     const args = ['--long', '--json'];
     await exec('npm outdated', args, execOptions);
   }
-
-  // console.log('stdout:', stdout.trim());
 
   if (stdout.trim().length === 0) {
     return [];
@@ -104,7 +100,6 @@ export const executeOutdated = async (
 
   if (options.packageManager === 'yarn') {
     const packages = getOutdatedPackagesByYarn(stdout);
-    console.log('packages:', packages);
     return packages;
   } else {
     return getOutdatedPackagesByNpm(stdout);
