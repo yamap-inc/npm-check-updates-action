@@ -78,14 +78,18 @@ export const executeOutdated = async (
     ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {
+        console.log('buffer:', data.toString());
         stdout += data.toString();
       },
     },
   };
 
+  console.log('pre yarn outdated');
+
   if (options.packageManager === 'yarn') {
     const args = ['--json'];
     await exec('yarn outdated', args, execOptions);
+    console.log('post yarn outdated');
   } else {
     const args = ['--long', '--json'];
     await exec('npm outdated', args, execOptions);
