@@ -74206,15 +74206,15 @@ exports.getOutdatedPackagesByNpm = (jsonString) => {
     });
 };
 exports.getOutdatedPackagesByYarn = (jsonString) => {
-    const json = exports.parseYarnOutdatedJSON(jsonString);
-    if (!json)
-        throw new Error('Failed to parse yarn outdated JSON');
-    delete json.type;
-    delete json.data.head;
-    return json.data.body.map((item) => {
-        const [name, current, wanted, latest, , homepage] = item;
-        return { name, current, wanted, latest, homepage };
-    });
+    return [];
+    // const json = parseYarnOutdatedJSON(jsonString);
+    // if (!json) throw new Error('Failed to parse yarn outdated JSON');
+    // delete json.type;
+    // delete json.data.head;
+    // return json.data.body.map((item: any) => {
+    //   const [name, current, wanted, latest, , homepage] = item;
+    //   return { name, current, wanted, latest, homepage };
+    // });
 };
 exports.executeOutdated = (options = {
     packageManager: 'npm',
@@ -74226,23 +74226,29 @@ exports.executeOutdated = (options = {
         ignoreReturnCode: true,
         listeners: {
             stdout: (data) => {
+                console.log('buffer:', data.toString());
                 stdout += data.toString();
             },
         },
     };
+    console.log('pre yarn outdated');
     if (options.packageManager === 'yarn') {
         const args = ['--json'];
         yield exec_1.exec('yarn outdated', args, execOptions);
+        console.log('post yarn outdated');
     }
     else {
         const args = ['--long', '--json'];
         yield exec_1.exec('npm outdated', args, execOptions);
     }
+    console.log('stdout:', stdout.trim());
     if (stdout.trim().length === 0) {
         return [];
     }
     if (options.packageManager === 'yarn') {
-        return exports.getOutdatedPackagesByYarn(stdout);
+        const packages = exports.getOutdatedPackagesByYarn(stdout);
+        console.log('packages:', packages);
+        return packages;
     }
     else {
         return exports.getOutdatedPackagesByNpm(stdout);
