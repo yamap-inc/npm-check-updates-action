@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "pack": "ncc build",
+    "pack": "ncc build --external='@npmcli/run-script'",
     "all": "yarn lint && npm run format && yarn run typecheck && yarn run test && yarn run pack"
   },
   "repository": {
@@ -34,6 +34,7 @@
     "npm-check-updates": "^11.2.0"
   },
   "devDependencies": {
+    "@npmcli/run-script": "^1.8.5",
     "@types/jest": "^26.0.23",
     "@types/node": "^15.9.0",
     "@typescript-eslint/eslint-plugin": "^4.26.0",

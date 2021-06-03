@@ -1,7 +1,7 @@
 import * as core from '@actions/core';
 import * as io from '@actions/io';
 import { exec } from '@actions/exec';
-// import ncu from 'npm-check-updates';
+import ncu from 'npm-check-updates';
 import path from 'path';
 
 import { executeOutdated, convertToPackages, formatAsColumns } from './lib';
@@ -20,11 +20,11 @@ async function run() {
 
     console.log('outdated: ', outdatedPackages);
 
-    // await ncu.run({
-    //   packageFile: './' + path.join(workingDir || '', './package.json'),
-    //   packageManager,
-    //   upgrade: true,
-    // });
+    await ncu.run({
+      packageFile: './' + path.join(workingDir || '', './package.json'),
+      packageManager,
+      upgrade: true,
+    });
     const execOptions = workingDir ? { cwd: workingDir } : {};
     if (packageManager === 'npm') {
       await exec('npm install', [], execOptions);
