@@ -1845,18 +1845,16 @@ const executeOutdated = (options = {
     packageManager: 'npm',
 }) => __awaiter(void 0, void 0, void 0, function* () {
     let stdout = '';
-    const path = core.getInput('path');
+    const workingDir = core.getInput('path');
     const execOptions = {
-        cwd: path,
+        cwd: workingDir || './',
         ignoreReturnCode: true,
         listeners: {
             stdout: (data) => {
-                // console.log('buffer:', data.toString());
                 stdout += data.toString();
             },
         },
     };
-    console.log('pre yarn outdated');
     if (options.packageManager === 'yarn') {
         const args = ['--json'];
         yield (0,exec.exec)('yarn outdated', args, execOptions);
@@ -1923,6 +1921,7 @@ var src_awaiter = (undefined && undefined.__awaiter) || function (thisArg, _argu
 
 function run() {
     return src_awaiter(this, void 0, void 0, function* () {
+        const workingDir = core.getInput('path', { required: false });
         try {
             const packageManager = (core.getInput('package_manager', {
                 required: false,
@@ -1931,14 +1930,17 @@ function run() {
             const outdatedPackages = yield executeOutdated({ packageManager });
             const packages = yield convertToPackages(outdatedPackages);
             console.log('outdated: ', outdatedPackages);
-            // await ncu.run({ packageManager, upgrade: true });
+            // await ncu.run({
+            //   packageFile: './' + path.join(workingDir || '', './package.json'),
+            //   packageManager,
+            //   upgrade: true,
+            // });
+            const execOptions = workingDir ? { cwd: workingDir } : {};
             if (packageManager === 'npm') {
-                yield (0,exec.exec)('npm install');
+                yield (0,exec.exec)('npm install', [], execOptions);
             }
             else if (packageManager === 'yarn') {
-                const path = core.getInput('path', { required: false });
-                console.log('path: ', path);
-                yield (0,exec.exec)('yarn install', [], { cwd: path });
+                yield (0,exec.exec)('yarn install', [], execOptions);
             }
             core.setOutput('has_update', packages.length > 0 ? 'yes' : 'no');
             core.setOutput('formatted_as_json', JSON.stringify(packages));

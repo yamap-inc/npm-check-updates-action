@@ -72,19 +72,16 @@ export const executeOutdated = async (
 ) => {
   let stdout = '';
 
-  const path = core.getInput('path');
+  const workingDir = core.getInput('path');
   const execOptions: Record<string, any> = {
-    cwd: path,
+    cwd: workingDir || './',
     ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {
-        // console.log('buffer:', data.toString());
         stdout += data.toString();
       },
     },
   };
-
-  console.log('pre yarn outdated');
 
   if (options.packageManager === 'yarn') {
     const args = ['--json'];
