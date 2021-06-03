@@ -73,7 +73,7 @@ export const executeOutdated = async (
   let stdout = '';
 
   const path = core.getInput('path');
-  const execOptions: object = {
+  const execOptions: Record<string, any> = {
     cwd: path,
     ignoreReturnCode: true,
     listeners: {

@@ -2,10 +2,9 @@ import * as lib from '../src/lib';
 import fixture from './fixtures/outdated_packages.json';
 
 describe('convertToPackages', () => {
-  test('updates exist', async (done) => {
+  test('updates exist', async () => {
     const packages = await lib.convertToPackages(fixture);
     expect(packages.length).toBe(4);
-    done();
   });
 });
 
@@ -45,7 +44,7 @@ describe('haasMajorUpdate', () => {
 });
 
 describe('formatAsColumns', () => {
-  test('works', async (done) => {
+  test('works', async () => {
     const packages: lib.Package[] = [
       {
         name: 'jest',
@@ -55,6 +54,5 @@ describe('formatAsColumns', () => {
       },
     ];
     expect(await lib.formatAsColumns(packages)).toBeDefined();
-    done();
   });
 });
