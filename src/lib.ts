@@ -53,15 +53,15 @@ export const getOutdatedPackagesByNpm = (jsonString: string) => {
 };
 
 export const getOutdatedPackagesByYarn = (jsonString: string) => {
-  return [];
-  // const json = parseYarnOutdatedJSON(jsonString);
-  // if (!json) throw new Error('Failed to parse yarn outdated JSON');
-  // delete json.type;
-  // delete json.data.head;
-  // return json.data.body.map((item: any) => {
-  //   const [name, current, wanted, latest, , homepage] = item;
-  //   return { name, current, wanted, latest, homepage };
-  // });
+  const json = parseYarnOutdatedJSON(jsonString);
+  if (!json) throw new Error('Failed to parse yarn outdated JSON');
+  delete json.type;
+  delete json.data.head;
+  return json.data.body.map((item: any) => {
+    console.log('itemp[index]:', item[0]);
+    const [name, current, wanted, latest, , homepage] = item;
+    return { name, current, wanted, latest, homepage };
+  });
 };
 
 export const executeOutdated = async (
@@ -79,7 +79,7 @@ export const executeOutdated = async (
     ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {
-        console.log('buffer:', data.toString());
+        // console.log('buffer:', data.toString());
         stdout += data.toString();
       },
     },
@@ -96,7 +96,7 @@ export const executeOutdated = async (
     await exec('npm outdated', args, execOptions);
   }
 
-  console.log('stdout:', stdout.trim());
+  // console.log('stdout:', stdout.trim());
 
   if (stdout.trim().length === 0) {
     return [];

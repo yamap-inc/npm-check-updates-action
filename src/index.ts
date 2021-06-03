@@ -15,11 +15,14 @@ async function run() {
     const outdatedPackages = await executeOutdated({ packageManager });
     const packages = await convertToPackages(outdatedPackages);
 
+    console.log('outdated: ', outdatedPackages);
+
     await ncu.run({ packageManager, upgrade: true });
     if (packageManager === 'npm') {
       await exec('npm install');
     } else if (packageManager === 'yarn') {
-      const path = core.getInput('path');
+      const path = core.getInput('path', { required: false });
+      console.log('path: ', path);
       await exec('yarn install', [], { cwd: path });
     }
 

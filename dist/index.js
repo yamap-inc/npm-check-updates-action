@@ -23972,12 +23972,14 @@ function run() {
             yield io.which(packageManager, true);
             const outdatedPackages = yield lib_1.executeOutdated({ packageManager });
             const packages = yield lib_1.convertToPackages(outdatedPackages);
+            console.log('outdated: ', outdatedPackages);
             yield npm_check_updates_1.default.run({ packageManager, upgrade: true });
             if (packageManager === 'npm') {
                 yield exec_1.exec('npm install');
             }
             else if (packageManager === 'yarn') {
-                const path = core.getInput('path');
+                const path = core.getInput('path', { required: false });
+                console.log('path: ', path);
                 yield exec_1.exec('yarn install', [], { cwd: path });
             }
             core.setOutput('has_update', packages.length > 0 ? 'yes' : 'no');
@@ -74206,15 +74208,16 @@ exports.getOutdatedPackagesByNpm = (jsonString) => {
     });
 };
 exports.getOutdatedPackagesByYarn = (jsonString) => {
-    return [];
-    // const json = parseYarnOutdatedJSON(jsonString);
-    // if (!json) throw new Error('Failed to parse yarn outdated JSON');
-    // delete json.type;
-    // delete json.data.head;
-    // return json.data.body.map((item: any) => {
-    //   const [name, current, wanted, latest, , homepage] = item;
-    //   return { name, current, wanted, latest, homepage };
-    // });
+    const json = exports.parseYarnOutdatedJSON(jsonString);
+    if (!json)
+        throw new Error('Failed to parse yarn outdated JSON');
+    delete json.type;
+    delete json.data.head;
+    return json.data.body.map((item) => {
+        console.log('itemp[index]:', item[0]);
+        const [name, current, wanted, latest, , homepage] = item;
+        return { name, current, wanted, latest, homepage };
+    });
 };
 exports.executeOutdated = (options = {
     packageManager: 'npm',
@@ -74226,7 +74229,7 @@ exports.executeOutdated = (options = {
         ignoreReturnCode: true,
         listeners: {
             stdout: (data) => {
-                console.log('buffer:', data.toString());
+                // console.log('buffer:', data.toString());
                 stdout += data.toString();
             },
         },
@@ -74241,7 +74244,7 @@ exports.executeOutdated = (options = {
         const args = ['--long', '--json'];
         yield exec_1.exec('npm outdated', args, execOptions);
     }
-    console.log('stdout:', stdout.trim());
+    // console.log('stdout:', stdout.trim());
     if (stdout.trim().length === 0) {
         return [];
     }
