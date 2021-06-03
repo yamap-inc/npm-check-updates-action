@@ -91,12 +91,16 @@ export const executeOutdated = async (
     await exec('npm outdated', args, execOptions);
   }
 
+  console.log('stdout:', stdout.trim());
+
   if (stdout.trim().length === 0) {
     return [];
   }
 
   if (options.packageManager === 'yarn') {
-    return getOutdatedPackagesByYarn(stdout);
+    const packages = getOutdatedPackagesByYarn(stdout);
+    console.log('packages:', packages);
+    return packages;
   } else {
     return getOutdatedPackagesByNpm(stdout);
   }
