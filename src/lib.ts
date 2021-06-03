@@ -53,14 +53,15 @@ export const getOutdatedPackagesByNpm = (jsonString: string) => {
 };
 
 export const getOutdatedPackagesByYarn = (jsonString: string) => {
-  const json = parseYarnOutdatedJSON(jsonString);
-  if (!json) throw new Error('Failed to parse yarn outdated JSON');
-  delete json.type;
-  delete json.data.head;
-  return json.data.body.map((item: any) => {
-    const [name, current, wanted, latest, , homepage] = item;
-    return { name, current, wanted, latest, homepage };
-  });
+  return [];
+  // const json = parseYarnOutdatedJSON(jsonString);
+  // if (!json) throw new Error('Failed to parse yarn outdated JSON');
+  // delete json.type;
+  // delete json.data.head;
+  // return json.data.body.map((item: any) => {
+  //   const [name, current, wanted, latest, , homepage] = item;
+  //   return { name, current, wanted, latest, homepage };
+  // });
 };
 
 export const executeOutdated = async (
