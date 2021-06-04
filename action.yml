@@ -1,6 +1,10 @@
 name: Npm check updates action
 description: npm package update action using ncu
 inputs:
+  path:
+    description: working directory
+    required: false
+    default: ''
   package_manager:
     description: which package manager you want to use
     required: false
@@ -13,6 +17,6 @@ outputs:
   formatted_as_columns:
     description: new version information formatted as columns for markdown table
 runs:
-  using: node12
+  using: node14
   main: dist/index.js
 
