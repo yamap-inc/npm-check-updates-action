@@ -23962,23 +23962,30 @@ const core = __importStar(__webpack_require__(470));
 const io = __importStar(__webpack_require__(1));
 const exec_1 = __webpack_require__(986);
 const npm_check_updates_1 = __importDefault(__webpack_require__(832));
+const path_1 = __importDefault(__webpack_require__(622));
 const lib_1 = __webpack_require__(795);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
+        const workingDir = core.getInput('path', { required: false });
         try {
-            const packageManager = (core.getInput('package_manager', { required: false }) || 'npm');
-            if (packageManager === 'yarn') {
-                yield exec_1.exec('npm install -g yarn');
-            }
+            const packageManager = (core.getInput('package_manager', {
+                required: false,
+            }) || 'npm');
             yield io.which(packageManager, true);
             const outdatedPackages = yield lib_1.executeOutdated({ packageManager });
             const packages = yield lib_1.convertToPackages(outdatedPackages);
-            yield npm_check_updates_1.default.run({ packageManager, upgrade: true });
+            console.log('outdated: ', outdatedPackages);
+            yield npm_check_updates_1.default.run({
+                packageFile: './' + path_1.default.join(workingDir || '', './package.json'),
+                packageManager,
+                upgrade: true,
+            });
+            const execOptions = workingDir ? { cwd: workingDir } : {};
             if (packageManager === 'npm') {
-                yield exec_1.exec('npm install');
+                yield exec_1.exec('npm install', [], execOptions);
             }
             else if (packageManager === 'yarn') {
-                yield exec_1.exec('yarn install');
+                yield exec_1.exec('yarn install', [], execOptions);
             }
             core.setOutput('has_update', packages.length > 0 ? 'yes' : 'no');
             core.setOutput('formatted_as_json', JSON.stringify(packages));
@@ -74160,10 +74167,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+const core = __importStar(__webpack_require__(470));
 const exec_1 = __webpack_require__(986);
 const os_1 = __importDefault(__webpack_require__(87));
 // @see https://github.com/masawada/yarn-outdated-formatter/blob/main/lib/parseYarnOutdatedJSON.js
@@ -74212,7 +74227,9 @@ exports.executeOutdated = (options = {
     packageManager: 'npm',
 }) => __awaiter(void 0, void 0, void 0, function* () {
     let stdout = '';
+    const workingDir = core.getInput('path');
     const execOptions = {
+        cwd: workingDir || './',
         ignoreReturnCode: true,
         listeners: {
             stdout: (data) => {
@@ -74232,7 +74249,8 @@ exports.executeOutdated = (options = {
         return [];
     }
     if (options.packageManager === 'yarn') {
-        return exports.getOutdatedPackagesByYarn(stdout);
+        const packages = exports.getOutdatedPackagesByYarn(stdout);
+        return packages;
     }
     else {
         return exports.getOutdatedPackagesByNpm(stdout);

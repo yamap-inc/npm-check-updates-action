@@ -1,3 +1,4 @@
+import * as core from '@actions/core';
 import { exec } from '@actions/exec';
 import os from 'os';
 
@@ -71,7 +72,9 @@ export const executeOutdated = async (
 ) => {
   let stdout = '';
 
-  const execOptions: object = {
+  const workingDir = core.getInput('path');
+  const execOptions: Record<string, any> = {
+    cwd: workingDir || './',
     ignoreReturnCode: true,
     listeners: {
       stdout: (data: Buffer) => {
@@ -93,7 +96,8 @@ export const executeOutdated = async (
   }
 
   if (options.packageManager === 'yarn') {
-    return getOutdatedPackagesByYarn(stdout);
+    const packages = getOutdatedPackagesByYarn(stdout);
+    return packages;
   } else {
     return getOutdatedPackagesByNpm(stdout);
   }
