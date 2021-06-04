@@ -20433,7 +20433,7 @@ exports.default = parseProxyResponse;
  */
 
 var util = __nccwpck_require__(31669);
-var ms = __nccwpck_require__(15631);
+var ms = __nccwpck_require__(80900);
 
 module.exports = function (t) {
   if (typeof t === 'number') return t;
@@ -20444,175 +20444,6 @@ module.exports = function (t) {
   }
   return r;
 };
-
-
-/***/ }),
-
-/***/ 15631:
-/***/ ((module) => {
-
-/**
- * Helpers.
- */
-
-var s = 1000;
-var m = s * 60;
-var h = m * 60;
-var d = h * 24;
-var w = d * 7;
-var y = d * 365.25;
-
-/**
- * Parse or format the given `val`.
- *
- * Options:
- *
- *  - `long` verbose formatting [false]
- *
- * @param {String|Number} val
- * @param {Object} [options]
- * @throws {Error} throw an error if val is not a non-empty string or a number
- * @return {String|Number}
- * @api public
- */
-
-module.exports = function (val, options) {
-  options = options || {};
-  var type = typeof val;
-  if (type === 'string' && val.length > 0) {
-    return parse(val);
-  } else if (type === 'number' && isFinite(val)) {
-    return options.long ? fmtLong(val) : fmtShort(val);
-  }
-  throw new Error(
-    'val is not a non-empty string or a valid number. val=' +
-      JSON.stringify(val)
-  );
-};
-
-/**
- * Parse the given `str` and return milliseconds.
- *
- * @param {String} str
- * @return {Number}
- * @api private
- */
-
-function parse(str) {
-  str = String(str);
-  if (str.length > 100) {
-    return;
-  }
-  var match = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
-    str
-  );
-  if (!match) {
-    return;
-  }
-  var n = parseFloat(match[1]);
-  var type = (match[2] || 'ms').toLowerCase();
-  switch (type) {
-    case 'years':
-    case 'year':
-    case 'yrs':
-    case 'yr':
-    case 'y':
-      return n * y;
-    case 'weeks':
-    case 'week':
-    case 'w':
-      return n * w;
-    case 'days':
-    case 'day':
-    case 'd':
-      return n * d;
-    case 'hours':
-    case 'hour':
-    case 'hrs':
-    case 'hr':
-    case 'h':
-      return n * h;
-    case 'minutes':
-    case 'minute':
-    case 'mins':
-    case 'min':
-    case 'm':
-      return n * m;
-    case 'seconds':
-    case 'second':
-    case 'secs':
-    case 'sec':
-    case 's':
-      return n * s;
-    case 'milliseconds':
-    case 'millisecond':
-    case 'msecs':
-    case 'msec':
-    case 'ms':
-      return n;
-    default:
-      return undefined;
-  }
-}
-
-/**
- * Short format for `ms`.
- *
- * @param {Number} ms
- * @return {String}
- * @api private
- */
-
-function fmtShort(ms) {
-  var msAbs = Math.abs(ms);
-  if (msAbs >= d) {
-    return Math.round(ms / d) + 'd';
-  }
-  if (msAbs >= h) {
-    return Math.round(ms / h) + 'h';
-  }
-  if (msAbs >= m) {
-    return Math.round(ms / m) + 'm';
-  }
-  if (msAbs >= s) {
-    return Math.round(ms / s) + 's';
-  }
-  return ms + 'ms';
-}
-
-/**
- * Long format for `ms`.
- *
- * @param {Number} ms
- * @return {String}
- * @api private
- */
-
-function fmtLong(ms) {
-  var msAbs = Math.abs(ms);
-  if (msAbs >= d) {
-    return plural(ms, msAbs, d, 'day');
-  }
-  if (msAbs >= h) {
-    return plural(ms, msAbs, h, 'hour');
-  }
-  if (msAbs >= m) {
-    return plural(ms, msAbs, m, 'minute');
-  }
-  if (msAbs >= s) {
-    return plural(ms, msAbs, s, 'second');
-  }
-  return ms + ' ms';
-}
-
-/**
- * Pluralization helper.
- */
-
-function plural(ms, msAbs, n, name) {
-  var isPlural = msAbs >= n * 1.5;
-  return Math.round(ms / n) + ' ' + name + (isPlural ? 's' : '');
-}
 
 
 /***/ }),
@@ -47854,6 +47685,19 @@ module.exports = cacheKey
 const CacheSemantics = __nccwpck_require__(61002)
 const Negotiator = __nccwpck_require__(95385)
 const ssri = __nccwpck_require__(6726)
+
+// HACK: negotiator lazy loads several of its own modules
+// as a micro optimization. we need to be sure that they're
+// in memory as soon as possible at startup so that we do
+// not try to lazy load them after the directory has been
+// retired during a self update of the npm CLI, we do this
+// by calling all of the methods that trigger a lazy load
+// on a fake instance.
+const preloadNegotiator = new Negotiator({ headers: {} })
+preloadNegotiator.charsets()
+preloadNegotiator.encodings()
+preloadNegotiator.languages()
+preloadNegotiator.mediaTypes()
 
 // options passed to http-cache-semantics constructor
 const policyOptions = {
@@ -87389,7 +87233,7 @@ module.exports = JSON.parse('[["0","\\u0000",128],["a1","｡",62],["8140","　�
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"name":"make-fetch-happen","version":"9.0.1","description":"Opinionated, caching, retrying fetch client","main":"lib/index.js","files":["lib"],"scripts":{"preversion":"npm t","postversion":"npm publish","prepublishOnly":"git push --follow-tags","test":"tap","posttest":"npm run lint","eslint":"eslint","lint":"npm run eslint -- lib test","lintfix":"npm run lint -- --fix"},"repository":"https://github.com/npm/make-fetch-happen","keywords":["http","request","fetch","mean girls","caching","cache","subresource integrity"],"author":{"name":"Kat Marchán","email":"kzm@zkat.tech","twitter":"maybekatz"},"license":"ISC","dependencies":{"agentkeepalive":"^4.1.3","cacache":"^15.2.0","http-cache-semantics":"^4.1.0","http-proxy-agent":"^4.0.1","https-proxy-agent":"^5.0.0","is-lambda":"^1.0.1","lru-cache":"^6.0.0","minipass":"^3.1.3","minipass-collect":"^1.0.2","minipass-fetch":"^1.3.2","minipass-flush":"^1.0.5","minipass-pipeline":"^1.2.4","negotiator":"^0.6.2","promise-retry":"^2.0.1","socks-proxy-agent":"^5.0.0","ssri":"^8.0.0"},"devDependencies":{"eslint":"^7.26.0","eslint-plugin-import":"^2.23.2","eslint-plugin-node":"^11.1.0","eslint-plugin-promise":"^5.1.0","eslint-plugin-standard":"^5.0.0","mkdirp":"^1.0.4","nock":"^13.0.11","npmlog":"^4.1.2","require-inject":"^1.4.2","rimraf":"^3.0.2","safe-buffer":"^5.2.1","standard-version":"^9.3.0","tap":"^15.0.9"},"engines":{"node":">= 10"},"tap":{"color":1,"files":"test/*.js","check-coverage":true}}');
+module.exports = JSON.parse('{"_from":"make-fetch-happen@^9.0.1","_id":"make-fetch-happen@9.0.2","_inBundle":false,"_integrity":"sha512-UkAWAuXPXSSlVviTjH2We20mtj1NnZW2Qq/oTY2dyMbRQ5CR3Xed3akCDMnM7j6axrMY80lhgM7loNE132PfAw==","_location":"/make-fetch-happen","_phantomChildren":{},"_requested":{"type":"range","registry":true,"raw":"make-fetch-happen@^9.0.1","name":"make-fetch-happen","escapedName":"make-fetch-happen","rawSpec":"^9.0.1","saveSpec":null,"fetchSpec":"^9.0.1"},"_requiredBy":["/npm-registry-fetch"],"_resolved":"https://registry.npmjs.org/make-fetch-happen/-/make-fetch-happen-9.0.2.tgz","_shasum":"aa8c0e4a5e3a5f2be86c54d3abed44fe5a32ad5d","_spec":"make-fetch-happen@^9.0.1","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action/node_modules/npm-registry-fetch","author":{"name":"Kat Marchán","email":"kzm@zkat.tech"},"bugs":{"url":"https://github.com/npm/make-fetch-happen/issues"},"bundleDependencies":false,"dependencies":{"agentkeepalive":"^4.1.3","cacache":"^15.2.0","http-cache-semantics":"^4.1.0","http-proxy-agent":"^4.0.1","https-proxy-agent":"^5.0.0","is-lambda":"^1.0.1","lru-cache":"^6.0.0","minipass":"^3.1.3","minipass-collect":"^1.0.2","minipass-fetch":"^1.3.2","minipass-flush":"^1.0.5","minipass-pipeline":"^1.2.4","negotiator":"^0.6.2","promise-retry":"^2.0.1","socks-proxy-agent":"^5.0.0","ssri":"^8.0.0"},"deprecated":false,"description":"Opinionated, caching, retrying fetch client","devDependencies":{"eslint":"^7.26.0","eslint-plugin-import":"^2.23.2","eslint-plugin-node":"^11.1.0","eslint-plugin-promise":"^5.1.0","eslint-plugin-standard":"^5.0.0","mkdirp":"^1.0.4","nock":"^13.0.11","npmlog":"^4.1.2","require-inject":"^1.4.2","rimraf":"^3.0.2","safe-buffer":"^5.2.1","standard-version":"^9.3.0","tap":"^15.0.9"},"engines":{"node":">= 10"},"files":["lib"],"homepage":"https://github.com/npm/make-fetch-happen#readme","keywords":["http","request","fetch","mean girls","caching","cache","subresource integrity"],"license":"ISC","main":"lib/index.js","name":"make-fetch-happen","repository":{"type":"git","url":"git+https://github.com/npm/make-fetch-happen.git"},"scripts":{"eslint":"eslint","lint":"npm run eslint -- lib test","lintfix":"npm run lint -- --fix","posttest":"npm run lint","postversion":"npm publish","prepublishOnly":"git push --follow-tags","preversion":"npm t","test":"tap"},"tap":{"color":1,"files":"test/*.js","check-coverage":true},"version":"9.0.2"}');
 
 /***/ }),
 
@@ -87405,7 +87249,7 @@ module.exports = {"i8":"1.3.3"};
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"name":"npm-registry-fetch","version":"11.0.0","description":"Fetch-based http client for use with npm registry APIs","main":"index.js","files":["*.js"],"scripts":{"eslint":"eslint","lint":"npm run npmclilint -- \\"*.*js\\" \\"test/**/*.*js\\"","lintfix":"npm run lint -- --fix","prepublishOnly":"git push origin --follow-tags","preversion":"npm test","postversion":"npm publish","test":"tap","posttest":"npm run lint --","npmclilint":"npmcli-lint","postsnap":"npm run lintfix --"},"repository":"https://github.com/npm/npm-registry-fetch","keywords":["npm","registry","fetch"],"author":{"name":"Kat Marchán","email":"kzm@sykosomatic.org","twitter":"maybekatz"},"license":"ISC","dependencies":{"make-fetch-happen":"^9.0.1","minipass":"^3.1.3","minipass-fetch":"^1.3.0","minipass-json-stream":"^1.0.1","minizlib":"^2.0.0","npm-package-arg":"^8.0.0"},"devDependencies":{"@npmcli/lint":"^1.0.1","cacache":"^15.0.0","nock":"^13.1.0","npmlog":"^4.1.2","require-inject":"^1.4.4","ssri":"^8.0.0","tap":"^15.0.4"},"tap":{"check-coverage":true,"test-ignore":"test[\\\\\\\\/](util|cache)[\\\\\\\\/]"},"engines":{"node":">=10"}}');
+module.exports = JSON.parse('{"_from":"npm-registry-fetch@^11.0.0","_id":"npm-registry-fetch@11.0.0","_inBundle":false,"_integrity":"sha512-jmlgSxoDNuhAtxUIG6pVwwtz840i994dL14FoNVZisrmZW5kWd63IUTNv1m/hyRSGSqWjCUp/YZlS1BJyNp9XA==","_location":"/npm-registry-fetch","_phantomChildren":{},"_requested":{"type":"range","registry":true,"raw":"npm-registry-fetch@^11.0.0","name":"npm-registry-fetch","escapedName":"npm-registry-fetch","rawSpec":"^11.0.0","saveSpec":null,"fetchSpec":"^11.0.0"},"_requiredBy":["/pacote"],"_resolved":"https://registry.npmjs.org/npm-registry-fetch/-/npm-registry-fetch-11.0.0.tgz","_shasum":"68c1bb810c46542760d62a6a965f85a702d43a76","_spec":"npm-registry-fetch@^11.0.0","_where":"/Users/suzuki/.ghq/github.com/yamap-inc/npm-check-updates-action/node_modules/pacote","author":{"name":"Kat Marchán","email":"kzm@sykosomatic.org"},"bugs":{"url":"https://github.com/npm/npm-registry-fetch/issues"},"bundleDependencies":false,"dependencies":{"make-fetch-happen":"^9.0.1","minipass":"^3.1.3","minipass-fetch":"^1.3.0","minipass-json-stream":"^1.0.1","minizlib":"^2.0.0","npm-package-arg":"^8.0.0"},"deprecated":false,"description":"Fetch-based http client for use with npm registry APIs","devDependencies":{"@npmcli/lint":"^1.0.1","cacache":"^15.0.0","nock":"^13.1.0","npmlog":"^4.1.2","require-inject":"^1.4.4","ssri":"^8.0.0","tap":"^15.0.4"},"engines":{"node":">=10"},"files":["*.js"],"homepage":"https://github.com/npm/npm-registry-fetch#readme","keywords":["npm","registry","fetch"],"license":"ISC","main":"index.js","name":"npm-registry-fetch","repository":{"type":"git","url":"git+https://github.com/npm/npm-registry-fetch.git"},"scripts":{"eslint":"eslint","lint":"npm run npmclilint -- \\"*.*js\\" \\"test/**/*.*js\\"","lintfix":"npm run lint -- --fix","npmclilint":"npmcli-lint","postsnap":"npm run lintfix --","posttest":"npm run lint --","postversion":"npm publish","prepublishOnly":"git push origin --follow-tags","preversion":"npm test","test":"tap"},"tap":{"check-coverage":true,"test-ignore":"test[\\\\\\\\/](util|cache)[\\\\\\\\/]"},"version":"11.0.0"}');
 
 /***/ }),
 
