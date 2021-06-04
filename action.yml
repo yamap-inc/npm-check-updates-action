@@ -17,6 +17,6 @@ outputs:
   formatted_as_columns:
     description: new version information formatted as columns for markdown table
 runs:
-  using: node14
+  using: node12
   main: dist/index.js
 
