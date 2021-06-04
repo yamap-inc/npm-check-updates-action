@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "pack": "ncc build --external='@npmcli/run-script'",
+    "pack": "ncc build -s --external='@npmcli/run-script'",
     "all": "yarn lint && npm run format && yarn run typecheck && yarn run test && yarn run pack"
   },
   "repository": {
