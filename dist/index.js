@@ -23977,7 +23977,6 @@ function run() {
             console.log('outdated: ', outdatedPackages);
             yield npm_check_updates_1.default.run({
                 packageFile: './' + path_1.default.join(workingDir || '', './package.json'),
-                packageManager,
                 upgrade: true,
             });
             const execOptions = workingDir ? { cwd: workingDir } : {};

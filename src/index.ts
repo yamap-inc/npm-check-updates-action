@@ -22,7 +22,6 @@ async function run() {
 
     await ncu.run({
       packageFile: './' + path.join(workingDir || '', './package.json'),
-      packageManager,
       upgrade: true,
     });
     const execOptions = workingDir ? { cwd: workingDir } : {};
